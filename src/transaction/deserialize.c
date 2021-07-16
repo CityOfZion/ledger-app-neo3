@@ -19,44 +19,148 @@
 #include "utils.h"
 #include "types.h"
 #include "../common/buffer.h"
+#include "stdlib.h"
+
+/**
+ * The minimum of signers. First signer must always be the sender of the tx
+ */
+#define MIN_TX_SIGNERS 1
+/**
+ * The maximum number of signers
+ */
+#define MAX_TX_SIGNERS 16
+
+/**
+ * Limits the maximum 'allowed_contracts' or 'allowed_groups'
+ */
+#define MAX_SIGNER_SUB_ITEMS 16
+
 
 parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     if (buf->size > MAX_TX_LEN) {
-        return WRONG_LENGTH_ERROR;
+        return INVALID_LENGTH_ERROR;
     }
 
-    // nonce
-    if (!buffer_read_u64(buf, &tx->nonce, BE)) {
+    if (!buffer_read_u8(buf, &tx->version)) {
+        return VERSION_PARSING_ERROR;
+    }
+
+    if (tx->version > 0) {
+        return VERSION_VALUE_ERROR;
+    }
+
+    if (!buffer_read_u32(buf, &tx->nonce, LE)) {
         return NONCE_PARSING_ERROR;
     }
 
-    tx->to = (uint8_t *) (buf->ptr + buf->offset);
-
-    // TO address
-    if (!buffer_seek_cur(buf, ADDRESS_LEN)) {
-        return TO_PARSING_ERROR;
+    if (!buffer_read_s64(buf, &tx->system_fee, LE)) {
+        return SYSTEM_FEE_PARSING_ERROR;
+    }
+    if (tx->system_fee < 0) {
+        return SYSTEM_FEE_VALUE_ERROR;
     }
 
-    // amount value
-    if (!buffer_read_u64(buf, &tx->value, BE)) {
-        return VALUE_PARSING_ERROR;
+    if (!buffer_read_s64(buf, &tx->network_fee, LE)) {
+        return NETWORK_FEE_PARSING_ERROR;
     }
 
-    // length of memo
-    if (!buffer_read_varint(buf, &tx->memo_len) && tx->memo_len > MAX_MEMO_LEN) {
-        return MEMO_LENGTH_ERROR;
+    if (tx->network_fee < 0) {
+        return NETWORK_FEE_VALUE_ERROR;
     }
 
-    // memo
-    tx->memo = (uint8_t *) (buf->ptr + buf->offset);
-
-    if (!buffer_seek_cur(buf, tx->memo_len)) {
-        return MEMO_PARSING_ERROR;
+    if (!buffer_read_u32(buf, &tx->valid_until_block, LE)) {
+        return VALID_UNTIL_BLOCK_PARSING_ERROR;
     }
 
-    if (!transaction_utils_check_encoding(tx->memo, tx->memo_len)) {
-        return MEMO_ENCODING_ERROR;
+    // Parse (Co)Signers
+    uint64_t signer_length;
+    if (!buffer_read_varint(buf, &signer_length)) {
+        return SIGNER_LENGTH_PARSING_ERROR;
+    }
+    if (signer_length < MIN_TX_SIGNERS || signer_length > MAX_TX_SIGNERS) {
+        return SIGNER_LENGTH_VALUE_ERROR;
     }
 
-    return (buf->offset == buf->size) ? PARSING_OK : WRONG_LENGTH_ERROR;
+    tx->signers_size = (uint8_t)signer_length;
+    for (int i=0; i < tx->signers_size; i++) {
+        tx->signers[i].account = (uint8_t *) (buf->ptr + buf->offset);
+        if (!buffer_seek_cur(buf, ACCOUNT_LEN)) {
+            return SIGNER_ACCOUNT_PARSING_ERROR;
+        }
+        uint8_t value;
+        if (!buffer_read_u8(buf, &value)) {
+            return SIGNER_SCOPE_PARSING_ERROR;
+        }
+        tx->signers[i].scope = (witness_scope_e)value;
+
+        // Scope GLOBAL is not allowed to have other flags
+        if ((((witness_scope_e)value & GLOBAL) == GLOBAL) && ((witness_scope_e)value != GLOBAL)) {
+            return SIGNER_SCOPE_VALUE_ERROR_GLOBAL_FLAG;
+        }
+
+        uint64_t var_int_length;
+        if (((witness_scope_e)value & CUSTOM_CONTRACTS) == CUSTOM_CONTRACTS) {
+            if(!buffer_read_varint(buf, &var_int_length)) {
+                return SIGNER_ALLOWED_CONTRACTS_LENGTH_PARSING_ERROR;
+            }
+            if (var_int_length > MAX_SIGNER_SUB_ITEMS
+                || var_int_length > 0) { // TODO: drop this check once we support parsing out contracts
+                return SIGNER_ALLOWED_CONTRACTS_LENGTH_VALUE_ERROR;
+            }
+        }
+
+        var_int_length = 0;
+        if (((witness_scope_e)value & CUSTOM_GROUPS) == CUSTOM_GROUPS) {
+            if(!buffer_read_varint(buf, &var_int_length)) {
+                return SIGNER_ALLOWED_GROUPS_LENGTH_PARSING_ERROR;
+            }
+
+            if (var_int_length > MAX_SIGNER_SUB_ITEMS
+                || var_int_length > 0) { // TODO: drop this check once we support parsing out groups
+                return SIGNER_ALLOWED_GROUPS_LENGTH_VALUE_ERROR;
+            }
+        }
+    }
+
+    // Parse transaction attributes
+    uint64_t attributes_length;
+    if (!buffer_read_varint(buf, &attributes_length)) {
+        return ATTRIBUTES_LENGTH_PARSING_ERROR;
+    }
+    // Yes MAX_TX_SIGNERS - signer length is what the actual network does
+    if (attributes_length > MAX_ATTRIBUTES || attributes_length > (MAX_TX_SIGNERS-signer_length)) {
+        return ATTRIBUTES_LENGTH_VALUE_ERROR;
+    }
+    tx->attributes_size = (uint8_t)attributes_length;
+
+    if (tx->attributes_size > 0) {
+        for (int i=0; i < tx->attributes_size; i++) {
+            uint8_t attribute_type;
+            if (!buffer_read_u8(buf, &attribute_type) && attribute_type != HIGH_PRIORITY) {
+                return ATTRIBUTES_UNSUPPORTED_TYPE;
+            }
+            // check for duplicates
+            for (int j=0; j < tx->attributes_size; j++) {
+                if (tx->attributes[j].type == attribute_type) {
+                    return ATTRIBUTES_DUPLICATE_TYPE;
+                }
+            }
+            tx->attributes[i] = (attribute_t){ .type = attribute_type};
+        }
+    }
+
+    // Parse out script
+    uint64_t script_length;
+    if (!buffer_read_varint(buf, &script_length)) {
+        return SCRIPT_LENGTH_PARSING_ERROR;
+    }
+
+    tx->script = (uint8_t *) (buf->ptr + buf->offset);
+    if (script_length > 0xFFFF || !buffer_seek_cur(buf, script_length)) {
+        return SCRIPT_LENGTH_VALUE_ERROR;
+    }
+    tx->script_size = (uint16_t)script_length;
+
+    // TODO: decide if we limit the script to token transfers or not
+    return (buf->offset == buf->size) ? PARSING_OK : INVALID_LENGTH_ERROR;
 }

@@ -16,6 +16,9 @@
 #define P1_START 0x00
 /**
  * Parameter 1 for maximum APDU number.
+ * First apdu must always be the BIP44 path,
+ * Second apdu must always be the network magic,
+ * therefore we have 2 chunks of 510 bytes left to fit our TX in
  */
 #define P1_MAX 0x03
 

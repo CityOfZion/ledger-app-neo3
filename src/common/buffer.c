@@ -117,6 +117,21 @@ bool buffer_read_u64(buffer_t *buffer, uint64_t *value, endianness_t endianness)
     return true;
 }
 
+bool buffer_read_s64(buffer_t *buffer, int64_t *value, endianness_t endianness) {
+    if (!buffer_can_read(buffer, 8)) {
+        *value = 0;
+
+        return false;
+    }
+
+    *value = ((endianness == BE) ? read_s64_be(buffer->ptr, buffer->offset)
+                                 : read_s64_le(buffer->ptr, buffer->offset));
+
+    buffer_seek_cur(buffer, 8);
+
+    return true;
+}
+
 bool buffer_read_varint(buffer_t *buffer, uint64_t *value) {
     int length = varint_read(buffer->ptr + buffer->offset, buffer->size - buffer->offset, value);
 

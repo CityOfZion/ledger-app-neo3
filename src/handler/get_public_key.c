@@ -1,6 +1,7 @@
 /*****************************************************************************
  *   Ledger App Boilerplate.
  *   (c) 2020 Ledger SAS.
+ *   (c) 2021 COZ Inc.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -30,35 +31,26 @@
 #include "../sw.h"
 #include "../crypto.h"
 #include "../common/buffer.h"
+#include "../common/bip44.h"
 #include "../ui/display.h"
-#include "../helper/send_response.h"
 
 int handler_get_public_key(buffer_t *cdata, bool display) {
     explicit_bzero(&G_context, sizeof(G_context));
-    G_context.req_type = CONFIRM_ADDRESS;
     G_context.state = STATE_NONE;
+
+    uint16_t status;
+    if (!buffer_read_and_validate_bip44(cdata, G_context.bip44_path, &status))
+        return io_send_sw(status);
 
     cx_ecfp_private_key_t private_key = {0};
     cx_ecfp_public_key_t public_key = {0};
 
-    if (!buffer_read_u8(cdata, &G_context.bip32_path_len) ||
-        !buffer_read_bip32_path(cdata, G_context.bip32_path, (size_t) G_context.bip32_path_len)) {
-        return io_send_sw(SW_WRONG_DATA_LENGTH);
-    }
-
-    // derive private key according to BIP32 path
-    crypto_derive_private_key(&private_key,
-                              G_context.pk_info.chain_code,
-                              G_context.bip32_path,
-                              G_context.bip32_path_len);
-    // generate corresponding public key
-    crypto_init_public_key(&private_key, &public_key, G_context.pk_info.raw_public_key);
-    // reset private key
+    // Derive private key according to BIP44 path
+    crypto_derive_private_key(&private_key, G_context.bip44_path, BIP44_PATH_LEN);
+    // Generate corresponding public key
+    crypto_init_public_key(&private_key, &public_key, G_context.raw_public_key);
+    // Clear private key
     explicit_bzero(&private_key, sizeof(private_key));
 
-    if (display) {
-        return ui_display_address();
-    }
-
-    return helper_send_response_pubkey();
+    return io_send_response(&(const buffer_t){.ptr = public_key.W, .size = 65, .offset = 0}, SW_OK);
 }

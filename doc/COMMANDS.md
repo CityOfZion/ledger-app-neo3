@@ -1,13 +1,14 @@
-# Boilerplate commands
+# NEO3 commands
 
 ## Overview
 
 | Command name | INS | Description |
 | --- | --- | --- |
-| `GET_VERSION` | 0x03 | Get application version as `MAJOR`, `MINOR`, `PATCH` |
-| `GET_APP_NAME` | 0x04 | Get ASCII encoded application name |
-| `GET_PUBLIC_KEY` | 0x05 | Get public key given BIP32 path |
-| `SIGN_TX` | 0x06 | Sign transaction given BIP32 path and raw transaction |
+| `GET_VERSION` | 0x00 | Get application version as `MAJOR`, `MINOR`, `PATCH` |
+| `GET_APP_NAME` | 0x01 | Get ASCII encoded application name |
+| `SIGN_TX` | 0x02 | Sign transaction given a BIP44 path, network magic and raw transaction |
+| `GET_PUBLIC_KEY` | 0x04 | Get public key given BIP44 path |
+
 
 ## GET_VERSION
 
@@ -15,7 +16,7 @@
 
 | CLA | INS | P1 | P2 | Lc | CData |
 | --- | --- | --- | --- | --- | --- |
-| 0xE0 | 0x03 | 0x00 | 0x00 | 0x00 | - |
+| 0x80 | 0x00 | 0x00 | 0x00 | 0x00 | - |
 
 ### Response
 
@@ -29,7 +30,7 @@
 
 | CLA | INS | P1 | P2 | Lc | CData |
 | --- | --- | --- | --- | --- | --- |
-| 0xE0 | 0x04 | 0x00 | 0x00 | 0x00 | - |
+| 0x80 | 0x01 | 0x00 | 0x00 | 0x00 | - |
 
 ### Response
 
@@ -37,36 +38,40 @@
 | --- | --- | --- |
 | var | 0x9000 | `APPNAME (var)` |
 
-## GET_PUBLIC_KEY
-
-### Command
-
-| CLA | INS | P1 | P2 | Lc | CData |
-| --- | --- | --- | --- | --- | --- |
-| 0xE0 | 0x05 | 0x00 (no display) <br> 0x01 (display) | 0x00 | 1 + 4n | `len(bip32_path) (1)` \|\|<br> `bip32_path{1} (4)` \|\|<br>`...` \|\|<br>`bip32_path{n} (4)` |
-
-### Response
-
-| Response length (bytes) | SW | RData |
-| --- | --- | --- |
-| var | 0x9000 | `len(public_key) (1)` \|\|<br> `public_key (var)` \|\|<br> `len(chain_code) (1)` \|\|<br> `chain_code (var)` |
-
 ## SIGN_TX
 
 ### Command
 
 | CLA | INS | P1 | P2 | Lc | CData |
 | --- | --- | --- | --- | --- | --- |
-| 0xE0 | 0x06 | 0x00-0x03 (chunk index) | 0x00 (more) <br> 0x80 (last) | 1 + 4n | `len(bip32_path) (1)` \|\|<br> `bip32_path{1} (4)` \|\|<br>`...` \|\|<br>`bip32_path{n} (4)` |
+| 0x80 | 0x02 | 0x00 (chunk index) | 0x00 | 1 + 4n | `len(bip44_path) (1)` \|\|<br> `bip44_path{1} (4)` \|\|<br>`...` \|\|<br>`bip44_path{n} (4)` |
+| 0x80 | 0x02 | 0x01 (chunk index) | 0x00 | 1 + 4 | `len(network_magic) (1)` \|\|<br> `network_magic (4)` |
+| 0x80 | 0x02 | 0x02-0x03 (chunk index) | 0x00 (more) <br> 0x80 (last) | 1 + 4n | `len(tx_data) (1)` \|\|<br> `tx_data{1}` \|\|<br>`...` \|\|<br>`tx_data{n}` |
 
 ### Response
 
 | Response length (bytes) | SW | RData |
 | --- | --- | --- |
-| var | 0x9000 | `len(signature) (1)` \|\| <br> `signature (var)` \|\| <br> `v (1)`|
+| var | 0x9000 | `ASN1.DER encoded signature (max 72 bytes)`|
 
+
+## GET_PUBLIC_KEY
+
+### Command
+
+| CLA | INS | P1 | P2 | Lc | CData |
+| --- | --- | --- | --- | --- | --- |
+| 0x80 | 0x04 | 0x00 (no display) <br> 0x01 (display) | 0x00 | 1 + 4n | `len(bip44_path) (1)` \|\|<br> `bip44_path{1} (4)` \|\|<br>`...` \|\|<br>`bip44_path{n} (4)` |
+
+### Response
+
+| Response length (bytes) | SW | RData |
+| --- | --- | --- |
+| var | 0x9000 | `uncompressed public_key (65 bytes) starting with 0x04` |
 
 ## Status Words
+
+TODO: update with final list!
 
 | SW | SW name | Description |
 | --- | --- | --- |

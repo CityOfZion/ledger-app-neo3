@@ -1,12 +1,13 @@
-# Ledger Boilerplate Application
+# NEO3 Application
 
-This is a boilerplate application which can be forked to start a new project for the Ledger Nano S/X.
+This is the NEO3 ledger application for the Nano S/X. It is based on Ledgers [Boilerplate app](https://github.com/LedgerHQ/app-boilerplate).
 
 ## Prerequisite
 
-Be sure to have your environment correctly set up (see [Getting Started](https://ledger.readthedocs.io/en/latest/userspace/introduction.html)) and [ledgerblue](https://pypi.org/project/ledgerblue/) and installed.
-
-If you want to benefit from [vscode](https://code.visualstudio.com/) integration, it's recommended to move the toolchain in `/opt` and set `BOLOS_ENV` environment variable as follows
+You can follow Ledgers [Getting Started](https://ledger.readthedocs.io/en/latest/userspace/introduction.html) guide to setup your environment to build and load the app onto your device. 
+At the time of writing their setup documentation was found to be convoluted, outdated and at times missing steps. 
+The [setup environment](./SETUP_ENVIRONMENT.md) document hopefully solves this. 
+ 
 
 ```
 BOLOS_ENV=/opt/bolos-devenv

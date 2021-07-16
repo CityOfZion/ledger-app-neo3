@@ -11,8 +11,6 @@
  *
  * @param[out] private_key
  *   Pointer to private key.
- * @param[out] chain_code
- *   Pointer to 32 bytes array for chain code.
  * @param[in]  bip32_path
  *   Pointer to buffer with BIP32 path.
  * @param[in]  bip32_path_len
@@ -24,7 +22,6 @@
  *
  */
 int crypto_derive_private_key(cx_ecfp_private_key_t *private_key,
-                              uint8_t chain_code[static 32],
                               const uint32_t *bip32_path,
                               uint8_t bip32_path_len);
 
@@ -50,7 +47,7 @@ int crypto_init_public_key(cx_ecfp_private_key_t *private_key,
 /**
  * Sign message hash in global context.
  *
- * @see G_context.bip32_path, G_context.tx_info.m_hash,
+ * @see G_context.bip32_path, G_context.tx_info.hash,
  * G_context.tx_info.signature.
  *
  * @return 0 if success, -1 otherwise.
@@ -59,3 +56,16 @@ int crypto_init_public_key(cx_ecfp_private_key_t *private_key,
  *
  */
 int crypto_sign_message(void);
+
+/**
+ * Sign network magic + message hash in global context.
+ *
+ * @see G_context.bip44_path, G_context.tx_info.hash, G_context.tx_info.signature and
+ * G_context.network_magic
+ *
+ * @return 0 if success, -1 otherwise.
+ *
+ * @throw INVALID_PARAMETER
+ *
+ */
+int crypto_sign_tx(void);

@@ -7,11 +7,7 @@
 /**
  * Length of public key.
  */
-#define PUBKEY_LEN (MEMBER_SIZE(pubkey_ctx_t, raw_public_key))
-/**
- * Length of chain code.
- */
-#define CHAINCODE_LEN (MEMBER_SIZE(pubkey_ctx_t, chain_code))
+#define PUBKEY_LEN 64
 
 /**
  * Helper to send APDU response with public key and chain code.

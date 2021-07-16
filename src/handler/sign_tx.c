@@ -29,30 +29,39 @@
 #include "../crypto.h"
 #include "../ui/display.h"
 #include "../common/buffer.h"
+#include "../common/bip44.h"
 #include "../transaction/types.h"
 #include "../transaction/deserialize.h"
 
 int handler_sign_tx(buffer_t *cdata, uint8_t chunk, bool more) {
-    if (chunk == 0) {  // first APDU, parse BIP32 path
+    if (chunk == 0) {  // First APDU, parse BIP44 path
         explicit_bzero(&G_context, sizeof(G_context));
         G_context.req_type = CONFIRM_TRANSACTION;
         G_context.state = STATE_NONE;
 
-        if (!buffer_read_u8(cdata, &G_context.bip32_path_len) ||
-            !buffer_read_bip32_path(cdata,
-                                    G_context.bip32_path,
-                                    (size_t) G_context.bip32_path_len)) {
-            return io_send_sw(SW_WRONG_DATA_LENGTH);
-        }
+        uint16_t status;
+        if (!buffer_read_and_validate_bip44(cdata, G_context.bip44_path, &status))
+            return io_send_sw(status);
 
+        G_context.state = STATE_BIP44_OK;
         return io_send_sw(SW_OK);
-    } else {  // parse transaction
-        if (G_context.req_type != CONFIRM_TRANSACTION) {
+    } else if (chunk == 1) {
+        if (G_context.req_type != CONFIRM_TRANSACTION && G_context.state != STATE_BIP44_OK) {
             return io_send_sw(SW_BAD_STATE);
         }
 
-        if (more) {  // more APDUs with transaction part
-            if (G_context.tx_info.raw_tx_len + cdata->size > MAX_TRANSACTION_LEN &&  //
+        if (!buffer_read_u32(cdata, &G_context.network_magic, LE)) {
+            return io_send_sw(SW_MAGIC_PARSING_FAIL);
+        }
+        G_context.state = STATE_MAGIC_OK;
+        return io_send_sw(SW_OK);
+    } else {  // Parse transaction
+        if (G_context.req_type != CONFIRM_TRANSACTION && G_context.state != STATE_MAGIC_OK) {
+            return io_send_sw(SW_BAD_STATE);
+        }
+
+        if (more) {  // More APDUs with transaction part
+            if (G_context.tx_info.raw_tx_len + cdata->size > MAX_TRANSACTION_LEN ||
                 !buffer_move(cdata,
                              G_context.tx_info.raw_tx + G_context.tx_info.raw_tx_len,
                              cdata->size)) {
@@ -62,8 +71,8 @@ int handler_sign_tx(buffer_t *cdata, uint8_t chunk, bool more) {
             G_context.tx_info.raw_tx_len += cdata->size;
 
             return io_send_sw(SW_OK);
-        } else {  // last APDU, let's parse and sign
-            if (G_context.tx_info.raw_tx_len + cdata->size > MAX_TRANSACTION_LEN ||  //
+        } else {  // Last APDU, let's parse and sign
+            if (G_context.tx_info.raw_tx_len + cdata->size > MAX_TRANSACTION_LEN ||
                 !buffer_move(cdata,
                              G_context.tx_info.raw_tx + G_context.tx_info.raw_tx_len,
                              cdata->size)) {
@@ -79,21 +88,22 @@ int handler_sign_tx(buffer_t *cdata, uint8_t chunk, bool more) {
             parser_status_e status = transaction_deserialize(&buf, &G_context.tx_info.transaction);
             PRINTF("Parsing status: %d.\n", status);
             if (status != PARSING_OK) {
+                // TODO: return parsing status via io_send_response, otherwise we have no idea why it failed
                 return io_send_sw(SW_TX_PARSING_FAIL);
             }
 
             G_context.state = STATE_PARSED;
 
-            cx_sha3_t keccak256;
-            cx_keccak_init(&keccak256, 256);
-            cx_hash((cx_hash_t *) &keccak256,
-                    CX_LAST,
-                    G_context.tx_info.raw_tx,
-                    G_context.tx_info.raw_tx_len,
-                    G_context.tx_info.m_hash,
-                    sizeof(G_context.tx_info.m_hash));
+            cx_sha256_t tx_hash;
+            cx_sha256_init(&tx_hash);
+            cx_hash((cx_hash_t *)&tx_hash,
+                    CX_LAST /*mode*/,
+                    G_context.tx_info.raw_tx /* data in */,
+                    G_context.tx_info.raw_tx_len /* data in len */,
+                    G_context.tx_info.hash /* hash out*/,
+                    sizeof(G_context.tx_info.hash)  /* hash out len */);
 
-            PRINTF("Hash: %.*H\n", sizeof(G_context.tx_info.m_hash), G_context.tx_info.m_hash);
+            PRINTF("Hash: %.*H\n", sizeof(G_context.tx_info.hash), G_context.tx_info.hash);
 
             return ui_display_transaction();
         }

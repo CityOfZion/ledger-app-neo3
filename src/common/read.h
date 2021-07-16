@@ -43,6 +43,19 @@ uint32_t read_u32_be(const uint8_t *ptr, size_t offset);
 uint64_t read_u64_be(const uint8_t *ptr, size_t offset);
 
 /**
+ * Read 8 bytes as Big Endian from byte buffer.
+ *
+ * @param[in] ptr
+ *   Pointer to byte buffer.
+ * @param[in] offset
+ *   Offset in the byte buffer.
+ *
+ * @return 8 bytes value read from buffer.
+ *
+ */
+int64_t read_s64_be(const uint8_t *ptr, size_t offset);
+
+/**
  * Read 2 bytes as Little Endian from byte buffer.
  *
  * @param[in] ptr
@@ -80,3 +93,16 @@ uint32_t read_u32_le(const uint8_t *ptr, size_t offset);
  *
  */
 uint64_t read_u64_le(const uint8_t *ptr, size_t offset);
+
+/**
+ * Read 8 bytes as Little Endian from byte buffer.
+ *
+ * @param[in] ptr
+ *   Pointer to byte buffer.
+ * @param[in] offset
+ *   Offset in the byte buffer.
+ *
+ * @return 8 bytes value read from buffer.
+ *
+ */
+int64_t read_s64_le(const uint8_t *ptr, size_t offset);

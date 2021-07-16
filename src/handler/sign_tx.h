@@ -6,18 +6,18 @@
 #include "../common/buffer.h"
 
 /**
- * Handler for SIGN_TX command. If successfully parse BIP32 path
- * and transaction, sign transaction and send APDU response.
+ * Handler for SIGN_TX command. If the BIP44 path is parsed successfully
+ * sign the transaction and send the signature in the APDU response.
  *
- * @see G_context.bip32_path, G_context.tx_info.raw_transaction,
- * G_context.tx_info.signature and G_context.tx_info.v.
+ * @see G_context.bip44_path, G_context.tx_info.raw_transaction,
+ * G_context.tx_info.signature.
  *
  * @param[in,out] cdata
- *   Command data with BIP32 path and raw transaction serialized.
+ *   Command data with BIP44 path and raw transaction serialized.
  * @param[in]     chunk
  *   Index number of the APDU chunk.
  * @param[in]       more
- *   Whether more APDU chunk to be received or not.
+ *   Whether more chunks are expected to be received or not.
  *
  * @return zero or positive integer if success, negative integer otherwise.
  *
