@@ -5,20 +5,34 @@
 
 #define MAX_TX_LEN   510
 #define ADDRESS_LEN  20
-#define ACCOUNT_LEN  20
+#define UINT160_LEN  20
+#define ECPOINT_LEN 33
 #define MAX_MEMO_LEN 465  // 510 - ADDRESS_LEN - 2*SIZE(U64) - SIZE(MAX_VARINT)
 
 /**
- * Maximum signer count, the individual signers must by unique as compared by the account field
+ * Maximum signer_t count in a transaction.
+ * Actual network value is 16, we limit it because we run out of SRAM
+ * The individual signers must be unique as compared by the account field.
  */
-#define MAX_TX_SIGNERS 16
-
+#define MAX_TX_SIGNERS 8
+/**
+ * The minimum number of signers. First signer is always the sender of the tx
+ */
+#define MIN_TX_SIGNERS 1
+/**
+ * Limits the maximum 'allowed_contracts' or 'allowed_groups' of a signer_t
+ * Actual network value is 16, we limit it because we run out of SRAM
+ */
+#define MAX_SIGNER_SUB_ITEMS 8
 /**
  * The NEO network actually limits the attributes to (16 - signers count).
  * However, there currently only exist 2 attribute types, both can only be attached once
- * (allow_multiple = False), so we can limit the size to 2.
+ * thus we limit the size to 2.
+ *
+ * The 16 magic is also reduced to 8 (see @MAX_TX_SIGNERS) due to SRAM limitation being reached.
  */
 #define MAX_ATTRIBUTES 2
+
 
 typedef enum {
     PARSING_OK = 1,
@@ -38,14 +52,16 @@ typedef enum {
     SIGNER_SCOPE_VALUE_ERROR_GLOBAL_FLAG = -14, // scope GLOBAL is not allowed to have other flags
     SIGNER_ALLOWED_CONTRACTS_LENGTH_PARSING_ERROR = -14,
     SIGNER_ALLOWED_CONTRACTS_LENGTH_VALUE_ERROR = -15,
-    SIGNER_ALLOWED_GROUPS_LENGTH_PARSING_ERROR = -16,
-    SIGNER_ALLOWED_GROUPS_LENGTH_VALUE_ERROR = -17,
-    ATTRIBUTES_LENGTH_PARSING_ERROR = -18,
-    ATTRIBUTES_LENGTH_VALUE_ERROR = -19, // exceeding count limits
-    ATTRIBUTES_UNSUPPORTED_TYPE = -20,
-    ATTRIBUTES_DUPLICATE_TYPE = -21,
-    SCRIPT_LENGTH_PARSING_ERROR = -22,
-    SCRIPT_LENGTH_VALUE_ERROR = -23 // requesting more data than available
+    SIGNER_ALLOWED_CONTRACT_PARSING_ERROR = -16,
+    SIGNER_ALLOWED_GROUPS_LENGTH_PARSING_ERROR = -17,
+    SIGNER_ALLOWED_GROUPS_LENGTH_VALUE_ERROR = -18,
+    SIGNER_ALLOWED_GROUPS_PARSING_ERROR = -19,
+    ATTRIBUTES_LENGTH_PARSING_ERROR = -20,
+    ATTRIBUTES_LENGTH_VALUE_ERROR = -21, // exceeding count limits
+    ATTRIBUTES_UNSUPPORTED_TYPE = -22,
+    ATTRIBUTES_DUPLICATE_TYPE = -23,
+    SCRIPT_LENGTH_PARSING_ERROR = -24,
+    SCRIPT_LENGTH_VALUE_ERROR = -25 // requesting more data than available
 } parser_status_e;
 
 typedef enum {
@@ -56,13 +72,12 @@ typedef enum {
     GLOBAL = 0x80
 } witness_scope_e;
 
-
 typedef struct {
     uint8_t *account; // UInt160, 20 bytes
     witness_scope_e scope;
-    uint8_t *allowed_contracts; // array of UInt160
+    uint8_t *allowed_contracts[MAX_SIGNER_SUB_ITEMS]; // array of UInt160s
     uint8_t allowed_contracts_size;
-    uint8_t *allowed_groups; // array of ECPoint in compressed format, 33 bytes
+    uint8_t *allowed_groups[MAX_SIGNER_SUB_ITEMS]; // array of ECPoints in compressed format, 33 bytes
     uint8_t allowed_groups_size;
 } signer_t;
 
@@ -75,8 +90,6 @@ typedef struct {
     tx_attribute_type_e type;
     // might expand this later if new attributes are introduced to have data beyond a type
 } attribute_t;
-
-
 
 typedef struct {
     uint8_t version;

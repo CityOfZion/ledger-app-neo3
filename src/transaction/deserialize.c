@@ -21,20 +21,6 @@
 #include "../common/buffer.h"
 #include "stdlib.h"
 
-/**
- * The minimum of signers. First signer must always be the sender of the tx
- */
-#define MIN_TX_SIGNERS 1
-/**
- * The maximum number of signers
- */
-#define MAX_TX_SIGNERS 16
-
-/**
- * Limits the maximum 'allowed_contracts' or 'allowed_groups'
- */
-#define MAX_SIGNER_SUB_ITEMS 16
-
 
 parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     if (buf->size > MAX_TX_LEN) {
@@ -84,9 +70,11 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     tx->signers_size = (uint8_t)signer_length;
     for (int i=0; i < tx->signers_size; i++) {
         tx->signers[i].account = (uint8_t *) (buf->ptr + buf->offset);
-        if (!buffer_seek_cur(buf, ACCOUNT_LEN)) {
+        if (!buffer_seek_cur(buf, UINT160_LEN)) {
             return SIGNER_ACCOUNT_PARSING_ERROR;
         }
+        // TODO: check that the signer is unique by comparing its account property vs existing accounts
+
         uint8_t value;
         if (!buffer_read_u8(buf, &value)) {
             return SIGNER_SCOPE_PARSING_ERROR;
@@ -103,9 +91,15 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
             if(!buffer_read_varint(buf, &var_int_length)) {
                 return SIGNER_ALLOWED_CONTRACTS_LENGTH_PARSING_ERROR;
             }
-            if (var_int_length > MAX_SIGNER_SUB_ITEMS
-                || var_int_length > 0) { // TODO: drop this check once we support parsing out contracts
+            if (var_int_length > MAX_SIGNER_SUB_ITEMS) {
                 return SIGNER_ALLOWED_CONTRACTS_LENGTH_VALUE_ERROR;
+            }
+            tx->signers[i].allowed_contracts_size = var_int_length;
+            for (size_t j=0; j < var_int_length; j++) {
+                tx->signers[i].allowed_contracts[j] = (uint8_t*)(buf->ptr + buf->offset);
+                if (!buffer_seek_cur(buf, UINT160_LEN)) {
+                    return SIGNER_ALLOWED_CONTRACT_PARSING_ERROR;
+                }
             }
         }
 
@@ -114,10 +108,15 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
             if(!buffer_read_varint(buf, &var_int_length)) {
                 return SIGNER_ALLOWED_GROUPS_LENGTH_PARSING_ERROR;
             }
-
-            if (var_int_length > MAX_SIGNER_SUB_ITEMS
-                || var_int_length > 0) { // TODO: drop this check once we support parsing out groups
+            if (var_int_length > MAX_SIGNER_SUB_ITEMS) {
                 return SIGNER_ALLOWED_GROUPS_LENGTH_VALUE_ERROR;
+            }
+            tx->signers[i].allowed_groups_size = var_int_length;
+            for (size_t j=0; j < var_int_length; j++) {
+                tx->signers[i].allowed_groups[j] = (uint8_t*)(buf->ptr + buf->offset);
+                if (!buffer_seek_cur(buf, ECPOINT_LEN)) {
+                    return SIGNER_ALLOWED_CONTRACT_PARSING_ERROR;
+                }
             }
         }
     }
@@ -127,7 +126,7 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     if (!buffer_read_varint(buf, &attributes_length)) {
         return ATTRIBUTES_LENGTH_PARSING_ERROR;
     }
-    // Yes MAX_TX_SIGNERS - signer length is what the actual network does
+    // Yes (MAX_TX_SIGNERS - signer length) is what the actual network does
     if (attributes_length > MAX_ATTRIBUTES || attributes_length > (MAX_TX_SIGNERS-signer_length)) {
         return ATTRIBUTES_LENGTH_VALUE_ERROR;
     }

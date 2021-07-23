@@ -1,7 +1,7 @@
 {
     "env": {
-        "BOLOS_SDK": "/opt/nanos-secure-sdk",
-        "BOLOS_ENV": "/opt"
+        "BOLOS_SDK": "/opt/ledger/nanos-secure-sdk",
+        "BOLOS_ENV": "/opt/ledger"
     },
     "configurations": [
         {
@@ -27,8 +27,8 @@
                 "UNUSED(x)=(void)x",
                 "APPVERSION=\"0.1.0\"",
                 "APPNAME=\"NEO3\"",
-                "MAJOR_VERSION=1",
-                "MINOR_VERSION=0",
+                "MAJOR_VERSION=0",
+                "MINOR_VERSION=1",
                 "PATCH_VERSION=0",
                 "IO_SEPROXYHAL_BUFFER_SIZE_B=128",
                 "HAVE_UX_FLOW",
