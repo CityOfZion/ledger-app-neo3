@@ -56,8 +56,8 @@ struct display_ctx_t {
    int8_t s_index; // track which signer is to be displayed
    enum e_signer_state s_next_prop; // track which property is to be displayed next
    uint8_t prop_index;
-   uint8_t c_index; // track which contract is to be displayed
-   uint8_t g_index; // track which group is to be displayed
+   int8_t c_index; // track which contract is to be displayed
+   int8_t g_index; // track which group is to be displayed
    bool start;
    bool end; // last signer is shown
 
@@ -263,6 +263,8 @@ void bnnn_paging_edgecase() {
 
 static enum e_signer_state signer_property[7] = {START, INDEX, ACCOUNT, SCOPE, CONTRACTS, GROUPS, END};
 
+
+// FINISHED and WORKING!
 void next_prop() {
     uint8_t *idx = &display_ctx.prop_index;
     signer_t signer = G_context.tx_info.transaction.signers[display_ctx.s_index];
@@ -271,43 +273,41 @@ void next_prop() {
         (*idx)++;
 
     if (signer_property[*idx] == CONTRACTS) {
-        if (signer.allowed_contracts_size == 0) {
-            (*idx)++; // move it to GROUPS 
-        } else {
+        // we start at -1            
+        if (display_ctx.c_index + 1 < signer.allowed_contracts_size) {
             display_ctx.c_index++;
-            if (display_ctx.c_index == signer.allowed_contracts_size) {
-                (*idx)++; // move to groups
-            } else {
-                return;
-            }
+            return; // let it display the contract
         }
+        (*idx)++; // advance state to GROUPS
     }
     if (signer_property[*idx] == GROUPS) {
-        if (signer.allowed_groups_size == 0) {
-            (*idx)++; // move it to END
-        }
-        if (signer.allowed_groups_size > 0) {
+        // we start at -1
+        if (display_ctx.g_index + 1 < signer.allowed_groups_size) {
             display_ctx.g_index++;
-            if (display_ctx.g_index == signer.allowed_groups_size) {
-                (*idx)++;
-            } else {
-                return;
-            }
+            return; // let it display the group
         }
+        (*idx)++; // advance state to END
     }
 
-    if (signer_property[*idx] == INDEX && display_ctx.prop_index > 0) { // TODO: check weird &&. are almost the same condition?
-        display_ctx.start = false;
-    }
-    
+    // set flag that the next screen is no longer the first DYNAMIC screen
+    // if (signer_property[*idx] == INDEX) {
+        // display_ctx.start = false;
+    // }
+
+    // if we displayed all properties of the current signer    
     if (signer_property[*idx] == END) {
+        // are there more signers?
         if (display_ctx.s_index + 1 == G_context.tx_info.transaction.signers_size) {
             display_ctx.end = true; // we've displayed all data for all signers
             return;
+        } else {
+            // yes, advance signer index and reset some properties
+            display_ctx.s_index++;
+            display_ctx.c_index = -1;
+            display_ctx.g_index = -1;
+            *idx = (uint8_t)START;
+            next_prop();
         }
-        // there are more signers to come, reset property index
-        display_ctx.s_index++;
-        *idx = (uint8_t)INDEX;
     }
 }
 
@@ -392,12 +392,6 @@ void display_next_state(bool is_upper_delimiter) {
                 
                 // Display the previous screen which should be a static one.
                 ux_flow_prev();
-                ux_flow_prev();
-                ux_flow_prev();
-                ux_flow_prev();
-                ux_flow_prev();
-
-                
             }
         } 
     } else {
@@ -411,8 +405,6 @@ void display_next_state(bool is_upper_delimiter) {
             }
                 
             // Display the data.
-            ux_flow_prev();
-            ux_flow_prev();
             ux_flow_prev();
         } else {
             // We're being called from a dynamic screen, so the user was already browsing the array.
