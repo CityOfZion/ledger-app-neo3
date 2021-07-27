@@ -183,8 +183,6 @@ UX_FLOW(ux_display_transaction_flow,
 
 void reset_signer_display_state() {
     display_ctx.current_state = STATIC_SCREEN;
-    display_ctx.start = true;
-    display_ctx.end = false;
     display_ctx.s_next_prop = 0;
     display_ctx.s_index = 0;
     display_ctx.g_index = -1;
@@ -278,6 +276,7 @@ void next_prop() {
             display_ctx.c_index++;
             return; // let it display the contract
         }
+        display_ctx.c_index++;
         (*idx)++; // advance state to GROUPS
     }
     if (signer_property[*idx] == GROUPS) {
@@ -286,22 +285,18 @@ void next_prop() {
             display_ctx.g_index++;
             return; // let it display the group
         }
+        display_ctx.g_index++;
         (*idx)++; // advance state to END
     }
-
-    // set flag that the next screen is no longer the first DYNAMIC screen
-    // if (signer_property[*idx] == INDEX) {
-        // display_ctx.start = false;
-    // }
 
     // if we displayed all properties of the current signer    
     if (signer_property[*idx] == END) {
         // are there more signers?
         if (display_ctx.s_index + 1 == G_context.tx_info.transaction.signers_size) {
-            display_ctx.end = true; // we've displayed all data for all signers
+            // no more signers
             return;
         } else {
-            // yes, advance signer index and reset some properties
+            // more signers, advance signer index and reset some properties
             display_ctx.s_index++;
             display_ctx.c_index = -1;
             display_ctx.g_index = -1;
@@ -311,18 +306,66 @@ void next_prop() {
     }
 }
 
+void prev_prop() {
+    uint8_t *idx = &display_ctx.prop_index;
+    signer_t signer = G_context.tx_info.transaction.signers[display_ctx.s_index];
+
+    // from first dynamic screen, go back to first static
+    if (display_ctx.s_index == 0 && signer_property[*idx] == INDEX) {
+        *idx = (uint8_t)START;
+        return;
+    }
+
+    // from static screen below lower_delimiter screen, go to last dynamic
+    if (signer_property[*idx] == END) {
+        (*idx)--; // reverse to GROUPS
+    }
+
+    if (signer_property[*idx] == GROUPS) {
+        if (display_ctx.g_index > 0) {
+            display_ctx.g_index--;
+            return; // let it display the group
+        }
+        display_ctx.g_index--; // make sure we end up at -1 as that is what next_prop() expects when going forward
+        (*idx)--; // advance state to CONTRACTS
+    }
+
+    if (signer_property[*idx] == CONTRACTS) {
+        if (display_ctx.c_index > 0) {
+            display_ctx.c_index--;
+            return; // let it display the contract
+        }
+        display_ctx.c_index--; // make sure we end up at -1 as that is what next_prop() expects when going forward
+        // no need to reverse state to SCOPE, will be done on the next line
+    }
+    (*idx)--;
+
+    // we've exhausted all properties, check if there are more signers
+    if (signer_property[*idx] == START) {
+        if (display_ctx.s_index > 0) {
+            display_ctx.s_index--;
+            signer = G_context.tx_info.transaction.signers[display_ctx.s_index];
+            *idx = (uint8_t)END; // set property index to end
+            display_ctx.g_index = signer.allowed_groups_size;
+            display_ctx.c_index = signer.allowed_contracts_size;
+            prev_prop();
+        }
+    }
+}
+
 bool get_next_data(bool is_forward) {
     if (is_forward) {
         next_prop();
     } else {
-        reset_signer_display_state();
-        return false; 
+        prev_prop();
     }
 
     signer_t s = G_context.tx_info.transaction.signers[display_ctx.s_index];
     enum e_signer_state display = signer_property[display_ctx.prop_index];
 
-    if (display_ctx.end) { // we reached the last signer and displayed all its data
+
+    if (display_ctx.s_index == G_context.tx_info.transaction.signers_size &&
+        signer_property[display_ctx.prop_index] == END) {
         return false;
     }
 
