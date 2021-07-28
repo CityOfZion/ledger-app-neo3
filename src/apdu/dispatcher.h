@@ -14,6 +14,7 @@
  * Parameter 1 for first APDU number.
  */
 #define P1_START 0x00
+// TODO: think about max size
 /**
  * Parameter 1 for maximum APDU number.
  * First apdu must always be the BIP44 path,

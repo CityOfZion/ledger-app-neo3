@@ -1,6 +1,7 @@
 /*****************************************************************************
  *   Ledger App Boilerplate.
  *   (c) 2020 Ledger SAS.
+ *   (c) 2021 COZ Inc.
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -30,37 +31,29 @@
 #include "../globals.h"
 #include "../io.h"
 #include "../sw.h"
-#include "../address.h"
 #include "action/validate.h"
 #include "../transaction/types.h"
-#include "../common/bip32.h"
 #include "../common/format.h"
 
 static action_validate_cb g_validate_callback;
 static char g_system_fee[30];
 static char g_network_fee[30];
-static char g_network[11]; // Target network the tx in tended for
-                           // ("MainNet", "TestNet" or uint32 network number)
-static char g_valid_until_block[11]; // uint32 (=max 10 chars) + \0
-static char g_title[64]; // generic step title
-static char g_text[64]; // generic step text
+static char g_network[11];            // Target network the tx in tended for
+                                      // ("MainNet", "TestNet" or uint32 network number for private nets)
+static char g_valid_until_block[11];  // uint32 (=max 10 chars) + \0
+static char g_scope[28];              // Longest combination is: "By Entry, Contracts, Groups" (27) + \0
+static char g_title[64];              // generic step title
+static char g_text[64];               // generic step text
 
-static char g_signer_account[8+UINT160_LEN+1]; // "Account " + UInt160 len + \0
-static char g_signer_scope[9+1]; // None, ByEntry, Contracts, Groups, Global + \0
-static char g_signer_custom_group[11+ECPOINT_LEN+1]; // "Group (n/m)" + point len + \0
-static char g_signer_custom_contract[14+UINT160_LEN+1]; // "Contract (n/m)"
-
+/**
+ * Hold state around displaying Signers and their properties
+ */
 struct display_ctx_t {
-// An instance of our new enum
-   enum e_state current_state; // screen state
-   int8_t s_index; // track which signer is to be displayed
-   enum e_signer_state s_next_prop; // track which property is to be displayed next
-   uint8_t prop_index;
-   int8_t c_index; // track which contract is to be displayed
-   int8_t g_index; // track which group is to be displayed
-   bool start;
-   bool end; // last signer is shown
-
+    enum e_state current_state;  // screen state
+    int8_t s_index;              // track which signer is to be displayed
+    uint8_t p_index;             // track which signer property is displayed (see also: e_signer_state)
+    int8_t c_index;              // track which signer.contract is to be displayed
+    int8_t g_index;              // track which signer.group is to be displayed
 } display_ctx;
 
 // Step with approve button
@@ -91,75 +84,44 @@ UX_STEP_NOCB(ux_display_review_step,
              });
 
 UX_STEP_NOCB(ux_display_systemfee_step,
-            bnnn_paging,
-            {
-                .title = "System fee",
-                .text = g_system_fee,
-            });
+             bnnn_paging,
+             {
+                 .title = "System fee",
+                 .text = g_system_fee,
+             });
 
 UX_STEP_NOCB(ux_display_network_step,
-            bnnn_paging,
-            {
-                .title = "Target network",
-                .text = g_network,
-            });
+             bnnn_paging,
+             {
+                 .title = "Target network",
+                 .text = g_network,
+             });
 
 UX_STEP_NOCB(ux_display_networkfee_step,
-            bnnn_paging,
-            {
-                .title = "Network fee",
-                .text = g_network_fee,
-            });
+             bnnn_paging,
+             {
+                 .title = "Network fee",
+                 .text = g_network_fee,
+             });
 
 UX_STEP_NOCB(ux_display_validuntilblock_step,
-            bnnn_paging,
-            {
-                .title = "Valid until height",
-                .text = g_valid_until_block,
-            });
+             bnnn_paging,
+             {
+                 .title = "Valid until height",
+                 .text = g_valid_until_block,
+             });
 
-UX_STEP_INIT(
-   ux_upper_delimiter,
-   NULL,
-   NULL,
-   {
-      // This function will be detailed later on.
-      display_next_state(true);
-   }
-);
+// 3 special steps for runtime dynamic screen generation, used to display attached signers and their properties
+UX_STEP_INIT(ux_upper_delimiter, NULL, NULL, { display_next_state(true); });
 
-UX_STEP_NOCB(
-    ux_display_signer,
-    bn,
-    {"Signer", "1 of 8"});  // make dynamic
+UX_STEP_NOCB(ux_display_generic,
+             bnnn_paging,
+             {
+                 .title = g_title,
+                 .text = g_text,
+             });
 
-UX_STEP_NOCB(
-    ux_display_signer_account,
-    bnnn_paging,
-    {
-        .title = "Account",
-        .text = g_signer_account,
-    });
-
-UX_STEP_NOCB(
-   ux_display_generic,
-   bnnn_paging,
-   {
-      .title = g_title,
-      .text = g_text,
-   }
-);
-
-// Note we're using UX_STEP_INIT because this step won't display anything.
-UX_STEP_INIT(
-   ux_lower_delimiter,
-   NULL,
-   NULL,
-   {
-      // This function will be detailed later on.
-      display_next_state(false);
-   }
-);
+UX_STEP_INIT(ux_lower_delimiter, NULL, NULL, { display_next_state(false); });
 
 // FLOW to display transaction information:
 // #1 screen : eye icon + "Review Transaction"
@@ -167,27 +129,29 @@ UX_STEP_INIT(
 // #3 screen : display system fee
 // #4 screen : display network fee
 // #5 screen : display max block height validity
-// #6 screen : approve button
-// #7 screen : reject button
+// #n screen : display properties of attached signers
+// #n+1 screen : approve button
+// #n+2 screen : reject button
 UX_FLOW(ux_display_transaction_flow,
         &ux_display_review_step,
         &ux_display_network_step,
         &ux_display_systemfee_step,
         &ux_display_networkfee_step,
         &ux_display_validuntilblock_step,
-        &ux_upper_delimiter, // special step that won't be shown, but used for runtime displaying dynamics screens when applicable
-        &ux_display_generic, // will be used to dynamically display Signers
-        &ux_lower_delimiter, // special step that won't be shown, but used for runtime displaying dynamics screens when applicable
+        &ux_upper_delimiter,  // special step that won't be shown, but used for runtime displaying
+                              // dynamics screens when applicable
+        &ux_display_generic,  // will be used to dynamically display Signers
+        &ux_lower_delimiter,  // special step that won't be shown, but used for runtime displaying
+                              // dynamics screens when applicable
         &ux_display_approve_step,
         &ux_display_reject_step);
 
 void reset_signer_display_state() {
     display_ctx.current_state = STATIC_SCREEN;
-    display_ctx.s_next_prop = 0;
     display_ctx.s_index = 0;
     display_ctx.g_index = -1;
     display_ctx.c_index = -1;
-    display_ctx.prop_index = 0;
+    display_ctx.p_index = 0;
 }
 
 int ui_display_transaction() {
@@ -210,22 +174,20 @@ int ui_display_transaction() {
     // It is not allowed to be negative so we can safely cast it to uint64_t
     memset(g_system_fee, 0, sizeof(g_system_fee));
     char system_fee[30] = {0};
-    if (!format_fpu64(system_fee, sizeof(system_fee), (uint64_t)G_context.tx_info.transaction.system_fee, 8)) {
+    if (!format_fpu64(system_fee, sizeof(system_fee), (uint64_t) G_context.tx_info.transaction.system_fee, 8)) {
         return io_send_sw(SW_DISPLAY_SYSTEM_FEE_FAIL);
     }
     snprintf(g_system_fee, sizeof(g_system_fee), "GAS %.*s", sizeof(system_fee), system_fee);
     PRINTF("System fee: %s GAS\n", system_fee);
 
-
     // Network fee is stored in a similar fashion as system fee above
     memset(g_network_fee, 0, sizeof(g_network_fee));
     char network_fee[30] = {0};
-    if (!format_fpu64(network_fee, sizeof(network_fee), (uint64_t)G_context.tx_info.transaction.network_fee, 8)) {
+    if (!format_fpu64(network_fee, sizeof(network_fee), (uint64_t) G_context.tx_info.transaction.network_fee, 8)) {
         return io_send_sw(SW_DISPLAY_NETWORK_FEE_FAIL);
     }
     snprintf(g_network_fee, sizeof(g_network_fee), "GAS %.*s", sizeof(network_fee), network_fee);
     PRINTF("Network fee: %s GAS\n", network_fee);
-
 
     snprintf(g_valid_until_block, sizeof(g_valid_until_block), "%d", G_context.tx_info.transaction.valid_until_block);
     PRINTF("Valid until: %s\n", g_valid_until_block);
@@ -237,17 +199,29 @@ int ui_display_transaction() {
     return 0;
 }
 
-const char* get_scope_name(witness_scope_e scope) 
-{
-   switch (scope) 
-   {
-      case NONE: return "None";
-      case CALLED_BY_ENTRY: return "By entry";
-      case CUSTOM_CONTRACTS: return "Contracts";
-      case CUSTOM_GROUPS: return "Groups";
-      case GLOBAL: return "Global";
-      default: return "Unknown";
-   }
+int parse_scope_name(witness_scope_e scope) {
+    size_t len = 0;
+    if (scope == NONE) {
+        return snprintf(g_scope, sizeof(g_scope), "%s", "None");
+    }
+
+    if (scope == GLOBAL) {
+        return snprintf(g_scope, sizeof(g_scope), "%s", "Global");
+    }
+
+    if (scope & CALLED_BY_ENTRY) {
+        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "By Entry,");
+    };
+
+    if (scope & CUSTOM_CONTRACTS) {
+        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "Contracts,");
+    };
+
+    if (scope & CUSTOM_GROUPS) {
+        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "Groups,");
+    };
+
+    return len - 1;  // take of the comma
 }
 
 // This is a special function you must call for bnnn_paging to work properly in an edgecase.
@@ -261,35 +235,32 @@ void bnnn_paging_edgecase() {
 
 static enum e_signer_state signer_property[7] = {START, INDEX, ACCOUNT, SCOPE, CONTRACTS, GROUPS, END};
 
-
-// FINISHED and WORKING!
 void next_prop() {
-    uint8_t *idx = &display_ctx.prop_index;
+    uint8_t *idx = &display_ctx.p_index;
     signer_t signer = G_context.tx_info.transaction.signers[display_ctx.s_index];
 
-    if (*idx < (uint8_t)CONTRACTS)
-        (*idx)++;
+    if (*idx < (uint8_t) CONTRACTS) (*idx)++;
 
     if (signer_property[*idx] == CONTRACTS) {
-        // we start at -1            
+        // we start at -1
         if (display_ctx.c_index + 1 < signer.allowed_contracts_size) {
             display_ctx.c_index++;
-            return; // let it display the contract
+            return;  // let it display the contract
         }
         display_ctx.c_index++;
-        (*idx)++; // advance state to GROUPS
+        (*idx)++;  // advance state to GROUPS
     }
     if (signer_property[*idx] == GROUPS) {
         // we start at -1
         if (display_ctx.g_index + 1 < signer.allowed_groups_size) {
             display_ctx.g_index++;
-            return; // let it display the group
+            return;  // let it display the group
         }
         display_ctx.g_index++;
-        (*idx)++; // advance state to END
+        (*idx)++;  // advance state to END
     }
 
-    // if we displayed all properties of the current signer    
+    // if we displayed all properties of the current signer
     if (signer_property[*idx] == END) {
         // are there more signers?
         if (display_ctx.s_index + 1 == G_context.tx_info.transaction.signers_size) {
@@ -300,42 +271,44 @@ void next_prop() {
             display_ctx.s_index++;
             display_ctx.c_index = -1;
             display_ctx.g_index = -1;
-            *idx = (uint8_t)START;
+            *idx = (uint8_t) START;
             next_prop();
         }
     }
 }
 
 void prev_prop() {
-    uint8_t *idx = &display_ctx.prop_index;
+    uint8_t *idx = &display_ctx.p_index;
     signer_t signer = G_context.tx_info.transaction.signers[display_ctx.s_index];
 
     // from first dynamic screen, go back to first static
     if (display_ctx.s_index == 0 && signer_property[*idx] == INDEX) {
-        *idx = (uint8_t)START;
+        *idx = (uint8_t) START;
         return;
     }
 
     // from static screen below lower_delimiter screen, go to last dynamic
     if (signer_property[*idx] == END) {
-        (*idx)--; // reverse to GROUPS
+        (*idx)--;  // reverse to GROUPS
     }
 
     if (signer_property[*idx] == GROUPS) {
         if (display_ctx.g_index > 0) {
             display_ctx.g_index--;
-            return; // let it display the group
+            return;  // let it display the group
         }
-        display_ctx.g_index--; // make sure we end up at -1 as that is what next_prop() expects when going forward
-        (*idx)--; // advance state to CONTRACTS
+        display_ctx.g_index--;  // make sure we end up at -1 as that is what next_prop() expects
+                                // when going forward
+        (*idx)--;               // advance state to CONTRACTS
     }
 
     if (signer_property[*idx] == CONTRACTS) {
         if (display_ctx.c_index > 0) {
             display_ctx.c_index--;
-            return; // let it display the contract
+            return;  // let it display the contract
         }
-        display_ctx.c_index--; // make sure we end up at -1 as that is what next_prop() expects when going forward
+        display_ctx.c_index--;  // make sure we end up at -1 as that is what next_prop() expects
+                                // when going forward
         // no need to reverse state to SCOPE, will be done on the next line
     }
     (*idx)--;
@@ -345,7 +318,7 @@ void prev_prop() {
         if (display_ctx.s_index > 0) {
             display_ctx.s_index--;
             signer = G_context.tx_info.transaction.signers[display_ctx.s_index];
-            *idx = (uint8_t)END; // set property index to end
+            *idx = (uint8_t) END;  // set property index to end
             display_ctx.g_index = signer.allowed_groups_size;
             display_ctx.c_index = signer.allowed_contracts_size;
             prev_prop();
@@ -353,19 +326,18 @@ void prev_prop() {
     }
 }
 
-bool get_next_data(bool is_forward) {
-    if (is_forward) {
+bool get_next_data(enum e_direction direction) {
+    if (direction == DIRECTION_FORWARD) {
         next_prop();
     } else {
         prev_prop();
     }
 
     signer_t s = G_context.tx_info.transaction.signers[display_ctx.s_index];
-    enum e_signer_state display = signer_property[display_ctx.prop_index];
-
+    enum e_signer_state display = signer_property[display_ctx.p_index];
 
     if (display_ctx.s_index == G_context.tx_info.transaction.signers_size &&
-        signer_property[display_ctx.prop_index] == END) {
+        signer_property[display_ctx.p_index] == END) {
         return false;
     }
 
@@ -375,7 +347,8 @@ bool get_next_data(bool is_forward) {
         }
         case INDEX: {
             snprintf(g_title, sizeof(g_title), "Signer");
-            snprintf(g_text, sizeof(g_text), "%d of %d", display_ctx.s_index + 1, G_context.tx_info.transaction.signers_size);
+            uint8_t signers_size = G_context.tx_info.transaction.signers_size;
+            snprintf(g_text, sizeof(g_text), "%d of %d", display_ctx.s_index + 1, signers_size);
             return true;
         }
         case ACCOUNT: {
@@ -385,8 +358,8 @@ bool get_next_data(bool is_forward) {
         }
         case SCOPE: {
             snprintf(g_title, sizeof(g_title), "Scope");
-            const char *name = get_scope_name(s.scope);
-            snprintf(g_text, sizeof(g_text), "%s", name);
+            int scope_size = parse_scope_name(s.scope);
+            snprintf(g_text, sizeof(g_text), "%.*s", scope_size, g_scope);
             return true;
         }
         case CONTRACTS: {
@@ -394,7 +367,7 @@ bool get_next_data(bool is_forward) {
             snprintf(g_title, sizeof(g_title), "Contract %d of %d", display_ctx.c_index + 1, s.allowed_contracts_size);
             snprintf(g_text, sizeof(g_text), "%.*H", UINT160_LEN, s.allowed_contracts[display_ctx.c_index]);
             return true;
-        } 
+        }
         case GROUPS: {
             s = G_context.tx_info.transaction.signers[display_ctx.s_index];
             snprintf(g_title, sizeof(g_title), "Group %d of %d", display_ctx.g_index + 1, s.allowed_groups_size);
@@ -409,10 +382,10 @@ bool get_next_data(bool is_forward) {
 
 // Taken from Ledger's advanced display management docs
 void display_next_state(bool is_upper_delimiter) {
-    if (is_upper_delimiter) { // We're called from the upper delimiter.
+    if (is_upper_delimiter) {  // We're called from the upper delimiter.
         if (display_ctx.current_state == STATIC_SCREEN) {
             // Fetch new data.
-            bool dynamic_data = get_next_data(true);
+            bool dynamic_data = get_next_data(DIRECTION_FORWARD);
             if (dynamic_data) {
                 // We found some data to display so we now enter in dynamic mode.
                 display_ctx.current_state = DYNAMIC_SCREEN;
@@ -424,7 +397,7 @@ void display_next_state(bool is_upper_delimiter) {
             // The previous screen was NOT a static screen, so we were already in a dynamic screen.
 
             // Fetch new data.
-            bool dynamic_data = get_next_data(false);
+            bool dynamic_data = get_next_data(DIRECTION_BACKWARD);
             if (dynamic_data) {
                 // We found some data so simply display it.
                 ux_flow_next();
@@ -432,31 +405,32 @@ void display_next_state(bool is_upper_delimiter) {
                 // There's no more dynamic data to display, so
                 // update the current state accordingly.
                 display_ctx.current_state = STATIC_SCREEN;
-                
+
                 // Display the previous screen which should be a static one.
                 ux_flow_prev();
             }
-        } 
+        }
     } else {
         // We're called from the lower delimiter.
         if (display_ctx.current_state == STATIC_SCREEN) {
             // Fetch new data.
-            bool dynamic_data = get_next_data(false);
+            bool dynamic_data = get_next_data(DIRECTION_BACKWARD);
             if (dynamic_data) {
                 // We found some data to display so enter in dynamic mode.
                 display_ctx.current_state = DYNAMIC_SCREEN;
             }
-                
+
             // Display the data.
             ux_flow_prev();
         } else {
             // We're being called from a dynamic screen, so the user was already browsing the array.
 
             // Fetch new data.
-            bool dynamic_data = get_next_data(true);
+            bool dynamic_data = get_next_data(DIRECTION_FORWARD);
             if (dynamic_data) {
                 // We found some data, so display it.
-                // Similar to `ux_flow_prev()` but updates layout to account for `bnnn_paging`'s weird behaviour.
+                // Similar to `ux_flow_prev()` but updates layout to account for `bnnn_paging`'s
+                // weird behaviour.
                 bnnn_paging_edgecase();
             } else {
                 // We found no data so make sure we update the state accordingly.

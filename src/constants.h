@@ -23,7 +23,7 @@
 /**
  * Maximum transaction length (bytes).
  */
-#define MAX_TRANSACTION_LEN 1024
+#define MAX_TRANSACTION_LEN 1024  // TODO: look into what we should say is the  max tx length
 
 /**
  * Maximum signature length (bytes).
@@ -42,7 +42,7 @@
 #define BIP44_PATH_LEN 5
 
 /** Length of BIP44 path, in bytes */
-#define  BIP44_BYTE_LENGTH (BIP44_PATH_LEN * sizeof(unsigned int))
+#define BIP44_BYTE_LENGTH (BIP44_PATH_LEN * sizeof(unsigned int))
 
 /**
  * Coin type 888 as described in

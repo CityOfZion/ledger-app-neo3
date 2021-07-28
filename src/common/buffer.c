@@ -22,7 +22,6 @@
 #include "buffer.h"
 #include "read.h"
 #include "varint.h"
-#include "bip32.h"
 
 bool buffer_can_read(const buffer_t *buffer, size_t n) {
     return buffer->size - buffer->offset >= n;
@@ -79,8 +78,7 @@ bool buffer_read_u16(buffer_t *buffer, uint16_t *value, endianness_t endianness)
         return false;
     }
 
-    *value = ((endianness == BE) ? read_u16_be(buffer->ptr, buffer->offset)
-                                 : read_u16_le(buffer->ptr, buffer->offset));
+    *value = ((endianness == BE) ? read_u16_be(buffer->ptr, buffer->offset) : read_u16_le(buffer->ptr, buffer->offset));
 
     buffer_seek_cur(buffer, 2);
 
@@ -94,8 +92,7 @@ bool buffer_read_u32(buffer_t *buffer, uint32_t *value, endianness_t endianness)
         return false;
     }
 
-    *value = ((endianness == BE) ? read_u32_be(buffer->ptr, buffer->offset)
-                                 : read_u32_le(buffer->ptr, buffer->offset));
+    *value = ((endianness == BE) ? read_u32_be(buffer->ptr, buffer->offset) : read_u32_le(buffer->ptr, buffer->offset));
 
     buffer_seek_cur(buffer, 4);
 
@@ -109,8 +106,7 @@ bool buffer_read_u64(buffer_t *buffer, uint64_t *value, endianness_t endianness)
         return false;
     }
 
-    *value = ((endianness == BE) ? read_u64_be(buffer->ptr, buffer->offset)
-                                 : read_u64_le(buffer->ptr, buffer->offset));
+    *value = ((endianness == BE) ? read_u64_be(buffer->ptr, buffer->offset) : read_u64_le(buffer->ptr, buffer->offset));
 
     buffer_seek_cur(buffer, 8);
 
@@ -124,8 +120,7 @@ bool buffer_read_s64(buffer_t *buffer, int64_t *value, endianness_t endianness) 
         return false;
     }
 
-    *value = ((endianness == BE) ? read_s64_be(buffer->ptr, buffer->offset)
-                                 : read_s64_le(buffer->ptr, buffer->offset));
+    *value = ((endianness == BE) ? read_s64_be(buffer->ptr, buffer->offset) : read_s64_le(buffer->ptr, buffer->offset));
 
     buffer_seek_cur(buffer, 8);
 
@@ -142,19 +137,6 @@ bool buffer_read_varint(buffer_t *buffer, uint64_t *value) {
     }
 
     buffer_seek_cur(buffer, (size_t) length);
-
-    return true;
-}
-
-bool buffer_read_bip32_path(buffer_t *buffer, uint32_t *out, size_t out_len) {
-    if (!bip32_path_read(buffer->ptr + buffer->offset,
-                         buffer->size - buffer->offset,
-                         out,
-                         out_len)) {
-        return false;
-    }
-
-    buffer_seek_cur(buffer, sizeof(*out) * out_len);
 
     return true;
 }

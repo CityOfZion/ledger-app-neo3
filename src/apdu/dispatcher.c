@@ -63,7 +63,7 @@ int apdu_dispatcher(const command_t *cmd) {
             buf.size = cmd->lc;
             buf.offset = 0;
 
-            return handler_get_public_key(&buf, (bool) cmd->p1);
+            return handler_get_public_key(&buf);
         case SIGN_TX:
             if ((cmd->p1 == P1_START && cmd->p2 != P2_MORE) ||  // first apdu must be the BIP44 path
                 cmd->p1 > P1_MAX ||                             //

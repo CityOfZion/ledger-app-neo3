@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <stdint.h>  // uint*_t
@@ -21,9 +20,7 @@
  * @throw INVALID_PARAMETER
  *
  */
-int crypto_derive_private_key(cx_ecfp_private_key_t *private_key,
-                              const uint32_t *bip32_path,
-                              uint8_t bip32_path_len);
+int crypto_derive_private_key(cx_ecfp_private_key_t *private_key, const uint32_t *bip32_path, uint8_t bip32_path_len);
 
 /**
  * Initialize public key given private key.
@@ -43,19 +40,6 @@ int crypto_derive_private_key(cx_ecfp_private_key_t *private_key,
 int crypto_init_public_key(cx_ecfp_private_key_t *private_key,
                            cx_ecfp_public_key_t *public_key,
                            uint8_t raw_public_key[static 64]);
-
-/**
- * Sign message hash in global context.
- *
- * @see G_context.bip32_path, G_context.tx_info.hash,
- * G_context.tx_info.signature.
- *
- * @return 0 if success, -1 otherwise.
- *
- * @throw INVALID_PARAMETER
- *
- */
-int crypto_sign_message(void);
 
 /**
  * Sign network magic + message hash in global context.

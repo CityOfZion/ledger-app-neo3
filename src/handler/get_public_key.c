@@ -34,13 +34,12 @@
 #include "../common/bip44.h"
 #include "../ui/display.h"
 
-int handler_get_public_key(buffer_t *cdata, bool display) {
+int handler_get_public_key(buffer_t *cdata) {
     explicit_bzero(&G_context, sizeof(G_context));
     G_context.state = STATE_NONE;
 
     uint16_t status;
-    if (!buffer_read_and_validate_bip44(cdata, G_context.bip44_path, &status))
-        return io_send_sw(status);
+    if (!buffer_read_and_validate_bip44(cdata, G_context.bip44_path, &status)) return io_send_sw(status);
 
     cx_ecfp_private_key_t private_key = {0};
     cx_ecfp_public_key_t public_key = {0};

@@ -23,27 +23,19 @@
 #include "../../io.h"
 #include "../../crypto.h"
 #include "../../globals.h"
-//#include "../../helper/send_response.h"
 
-void ui_action_validate_pubkey(bool choice) {
-    if (choice) {
-        //helper_send_response_pubkey();
-    } else {
-        io_send_sw(SW_DENY);
-    }
-
-    ui_menu_main();
-}
-
-void ui_action_validate_transaction(bool choice) {
-    if (choice) {
+void ui_action_validate_transaction(bool approved) {
+    if (approved) {
         G_context.state = STATE_APPROVED;
 
         if (crypto_sign_tx() < 0) {
             G_context.state = STATE_NONE;
             io_send_sw(SW_SIGN_FAIL);
         } else {
-            io_send_response(&(const buffer_t){.ptr = G_context.tx_info.signature, .size = G_context.tx_info.signature_len, .offset = 0}, SW_OK);
+            io_send_response(&(const buffer_t){.ptr = G_context.tx_info.signature,
+                                               .size = G_context.tx_info.signature_len,
+                                               .offset = 0},
+                             SW_OK);
         }
     } else {
         G_context.state = STATE_NONE;
