@@ -35,7 +35,7 @@ enum e_signer_state { START = 0, INDEX = 1, ACCOUNT = 2, SCOPE = 3, CONTRACTS = 
 
 extern struct display_ctx_t display_ctx;
 
-void display_next_state(bool is_upper_delimiter) __attribute__((optnone));  // TODO: remove attributes
-bool get_next_data(enum e_direction direction) __attribute__((optnone));
-void next_prop() __attribute__((optnone));
-void prev_prop() __attribute__((optnone));
+void display_next_state(bool is_upper_delimiter);  // __attribute__((optnone));  // TODO: remove attributes
+bool get_next_data(enum e_direction direction);    // __attribute__((optnone));
+void next_prop();                                  // __attribute__((optnone));
+void prev_prop();                                  // __attribute__((optnone));

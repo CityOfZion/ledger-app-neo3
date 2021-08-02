@@ -6,20 +6,29 @@ from .errors import *
 
 class DeviceException(Exception):  # pylint: disable=too-few-public-methods
     exc: Dict[int, Any] = {
+
         0x6985: DenyError,
         0x6A86: WrongP1P2Error,
         0x6A87: WrongDataLengthError,
         0x6D00: InsNotSupportedError,
         0x6E00: ClaNotSupportedError,
         0xB000: WrongResponseLengthError,
-        0xB001: DisplayBip32PathFailError,
-        0xB002: DisplayAddressFailError,
-        0xB003: DisplayAmountFailError,
-        0xB004: WrongTxLengthError,
-        0xB005: TxParsingFailError,
-        0xB006: TxHashFail,
-        0xB007: BadStateError,
-        0xB008: SignatureFailError
+        0xB001: WrongTxLengthError,
+        0xB002: TxParsingFailError,
+        0xB003: TxRejectSignError,
+        0xB004: TxHashFail,
+        0xB005: BadStateError,
+        0xB006: SignatureFailError,
+        0xB100: BIP44BadPurposeError,
+        0xB101: BIP44BadCoinTypeError,
+        0xB102: BIP44BadAccountNotHardenedError,
+        0xB103: BIP44BadAccountError,
+        0xB104: BIP44BadBadChangeError,
+        0xB105: BIP44BadAddressError,
+        0xB106: MagicParsingError,
+        0xB107: DisplaySystemFeeFailError,
+        0xB108: DisplayNetworkFeeFailError,
+
     }
 
     def __new__(cls,

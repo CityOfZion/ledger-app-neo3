@@ -54,7 +54,7 @@
 #define BIP44_PURPOSE 0x8000002C
 
 /** NEO Main network magic */
-#define NETWORK_MAINNET 5195086
+#define NETWORK_MAINNET 860833102
 
 /** NEO Test network magic */
-#define NETWORK_TESTNET 1951352142
+#define NETWORK_TESTNET 877933390

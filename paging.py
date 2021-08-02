@@ -20,7 +20,7 @@ def main():
     conn = getDongle('127.0.0.1', 9999, debug=True)
     # conn = usb_getDongle(debug=True)
     bip44 = bytes.fromhex("8000002C80000378800000000000000000000000")
-    network_magic = struct.pack("I", 5195086)
+    network_magic = struct.pack("I", 860833102)
     conn.exchange(apdu(SIGN_TX, p1=0, p2=P2_MORE, cdata=bip44))  # send BIP44 path
     conn.exchange(apdu(SIGN_TX, p1=1, p2=P2_MORE, cdata=network_magic))
     conn.exchange(apdu(SIGN_TX, p1=2, p2=P2_LAST, cdata=tx_unsigned_raw))

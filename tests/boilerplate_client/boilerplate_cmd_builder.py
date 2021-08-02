@@ -3,8 +3,9 @@ import logging
 import struct
 from typing import List, Tuple, Union, Iterator, cast
 
-from boilerplate_client.transaction import Transaction
-from boilerplate_client.utils import bip32_path_from_string
+from boilerplate_client.utils import bip44_path_from_string
+from neo3.network import node, payloads
+from neo3.core import serialization
 
 MAX_APDU_LEN: int = 255
 
@@ -29,10 +30,10 @@ def chunkify(data: bytes, chunk_len: int) -> Iterator[Tuple[bool, bytes]]:
 
 
 class InsType(enum.IntEnum):
-    INS_GET_VERSION = 0x03
-    INS_GET_APP_NAME = 0x04
-    INS_GET_PUBLIC_KEY = 0x05
-    INS_SIGN_TX = 0x06
+    INS_GET_APP_NAME = 0x00
+    INS_GET_VERSION = 0x01
+    INS_SIGN_TX = 0x02
+    INS_GET_PUBLIC_KEY = 0x04
 
 
 class BoilerplateCommandBuilder:
@@ -49,7 +50,7 @@ class BoilerplateCommandBuilder:
         Whether you want to see logging or not.
 
     """
-    CLA: int = 0xE0
+    CLA: int = 0x80
 
     def __init__(self, debug: bool = False):
         """Init constructor."""
@@ -142,15 +143,13 @@ class BoilerplateCommandBuilder:
                               p2=0x00,
                               cdata=b"")
 
-    def get_public_key(self, bip32_path: str, display: bool = False) -> bytes:
+    def get_public_key(self, bip44_path: str) -> bytes:
         """Command builder for GET_PUBLIC_KEY.
 
         Parameters
         ----------
-        bip32_path: str
-            String representation of BIP32 path.
-        display : bool
-            Whether you want to display the address on the device.
+        bip44_path: str
+            String representation of BIP44 path.
 
         Returns
         -------
@@ -158,28 +157,23 @@ class BoilerplateCommandBuilder:
             APDU command for GET_PUBLIC_KEY.
 
         """
-        bip32_paths: List[bytes] = bip32_path_from_string(bip32_path)
-
-        cdata: bytes = b"".join([
-            len(bip32_paths).to_bytes(1, byteorder="big"),
-            *bip32_paths
-        ])
+        bip44_paths: List[bytes] = bip44_path_from_string(bip44_path)
+        cdata: bytes = b"".join([*bip44_paths])
 
         return self.serialize(cla=self.CLA,
                               ins=InsType.INS_GET_PUBLIC_KEY,
-                              p1=0x01 if display else 0x00,
+                              p1=0x00,
                               p2=0x00,
                               cdata=cdata)
 
-    def sign_tx(self, bip32_path: str, transaction: Transaction) -> Iterator[Tuple[bool, bytes]]:
+    def sign_tx(self, bip44_path: str, transaction: payloads.Transaction) -> Iterator[Tuple[bool, bytes]]:
         """Command builder for INS_SIGN_TX.
 
         Parameters
         ----------
-        bip32_path : str
-            String representation of BIP32 path.
-        transaction : Transaction
-            Representation of the transaction to be signed.
+        bip44_path : str
+            String representation of BIP44 path.
+        transaction : payloads.Transaction
 
         Yields
         -------
@@ -187,12 +181,8 @@ class BoilerplateCommandBuilder:
             APDU command chunk for INS_SIGN_TX.
 
         """
-        bip32_paths: List[bytes] = bip32_path_from_string(bip32_path)
-
-        cdata: bytes = b"".join([
-            len(bip32_paths).to_bytes(1, byteorder="big"),
-            *bip32_paths
-        ])
+        bip44_paths: List[bytes] = bip44_path_from_string(bip44_path)
+        cdata: bytes = b"".join([*bip44_paths])
 
         yield False, self.serialize(cla=self.CLA,
                                     ins=InsType.INS_SIGN_TX,
@@ -200,19 +190,28 @@ class BoilerplateCommandBuilder:
                                     p2=0x80,
                                     cdata=cdata)
 
-        tx: bytes = transaction.serialize()
+        network_magic = struct.pack("I", 860833102)
+        yield False, self.serialize(cla=self.CLA,
+                                    ins=InsType.INS_SIGN_TX,
+                                    p1=0x01,
+                                    p2=0x80,
+                                    cdata=network_magic)
+
+        with serialization.BinaryWriter() as writer:
+            transaction.serialize_unsigned(writer)
+            tx: bytes = writer.to_array()
 
         for i, (is_last, chunk) in enumerate(chunkify(tx, MAX_APDU_LEN)):
             if is_last:
                 yield True, self.serialize(cla=self.CLA,
                                            ins=InsType.INS_SIGN_TX,
-                                           p1=i + 1,
+                                           p1=i + 2,
                                            p2=0x00,
                                            cdata=chunk)
                 return
             else:
                 yield False, self.serialize(cla=self.CLA,
                                             ins=InsType.INS_SIGN_TX,
-                                            p1=i + 1,
+                                            p1=i + 2,
                                             p2=0x80,
                                             cdata=chunk)

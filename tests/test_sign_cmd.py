@@ -1,39 +1,54 @@
 from hashlib import sha256
-from sha3 import keccak_256
 
-from ecdsa.curves import SECP256k1
+from ecdsa.curves import NIST256p
 from ecdsa.keys import VerifyingKey
 from ecdsa.util import sigdecode_der
 
-from boilerplate_client.transaction import Transaction
+from neo3.network import node, payloads
+from neo3.core import types
 
 
 def test_sign_tx(cmd, button):
-    bip32_path: str = "m/44'/0'/0'/0/0"
+    """
+    In order to debug this test locally while being able to see what's happening in the app
+    run Speculos as follows:
 
-    pub_key, chain_code = cmd.get_public_key(
-        bip32_path=bip32_path,
+    ./speculos.py --sdk 2.0 --ontop --button-port 42000 ../app-neo3/bin/app.elf
+
+    Then in PyCharm add "--headless" as Additional Argument for the testcase.
+    This will make sure it selects TCPButton instead of a fake button that does nothing.
+    """
+    bip44_path: str = "m/44'/888'/0'/0/0"
+
+    pub_key = cmd.get_public_key(
+        bip44_path=bip44_path,
         display=False
-    )  # type: bytes, bytes
+    )  # type: bytes
 
     pk: VerifyingKey = VerifyingKey.from_string(
         pub_key,
-        curve=SECP256k1,
+        curve=NIST256p,
         hashfunc=sha256
     )
 
-    tx = Transaction(
-        nonce=1,
-        to="0xde0b295669a9fd93d5f28d9ec85e40f4cb697bae",
-        value=666,
-        memo="For u EthDev"
-    )
+    signer = payloads.Signer(account=types.UInt160.from_string("d7678dd97c000be3f33e9362e673101bac4ca654"),
+                             scope=payloads.WitnessScope.CALLED_BY_ENTRY)
+    witness = payloads.Witness(invocation_script=b'', verification_script=b'\x55')
+    tx = payloads.Transaction(version=0,
+                              nonce=123,
+                              system_fee=456,
+                              network_fee=789,
+                              valid_until_block=1,
+                              attributes=[],
+                              signers=[signer],
+                              script=b'\x01\x02',
+                              witnesses=[witness])
 
-    v, der_sig = cmd.sign_tx(bip32_path=bip32_path,
-                             transaction=tx,
-                             button=button)
+    der_sig = cmd.sign_tx(bip44_path=bip44_path,
+                          transaction=tx,
+                          button=button)
 
     assert pk.verify(signature=der_sig,
-                     data=tx.serialize(),
-                     hashfunc=keccak_256,
+                     data=tx.to_array(),
+                     hashfunc=sha256,
                      sigdecode=sigdecode_der) is True

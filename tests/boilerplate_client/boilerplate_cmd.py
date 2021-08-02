@@ -73,49 +73,43 @@ class BoilerplateCommand:
 
         return response.decode("ascii")
 
-    def get_public_key(self, bip32_path: str, display: bool = False) -> Tuple[bytes, bytes]:
+    def get_public_key(self, bip44_path: str, display: bool = False) -> bytes:
         sw, response = self.transport.exchange_raw(
-            self.builder.get_public_key(bip32_path=bip32_path,
-                                        display=display)
+            self.builder.get_public_key(bip44_path=bip44_path)
         )  # type: int, bytes
 
         if sw != 0x9000:
             raise DeviceException(error_code=sw, ins=InsType.INS_GET_PUBLIC_KEY)
 
-        # response = pub_key_len (1) ||
-        #            pub_key (var) ||
-        #            chain_code_len (1) ||
-        #            chain_code (var)
-        offset: int = 0
+        assert len(response) == 65 # 04 + 64 bytes of uncompressed key
 
-        pub_key_len: int = response[offset]
-        offset += 1
-        pub_key: bytes = response[offset:offset + pub_key_len]
-        offset += pub_key_len
-        chain_code_len: int = response[offset]
-        offset += 1
-        chain_code: bytes = response[offset:offset + chain_code_len]
-        offset += chain_code_len
+        return response
 
-        assert len(response) == 1 + pub_key_len + 1 + chain_code_len
-
-        return pub_key, chain_code
-
-    def sign_tx(self, bip32_path: str, transaction: Transaction, button: Button) -> Tuple[int, bytes]:
+    def sign_tx(self, bip44_path: str, transaction: Transaction, button: Button) -> Tuple[int, bytes]:
         sw: int
         response: bytes = b""
 
-        for is_last, chunk in self.builder.sign_tx(bip32_path=bip32_path, transaction=transaction):
+        for is_last, chunk in self.builder.sign_tx(bip44_path=bip44_path, transaction=transaction):
             self.transport.send_raw(chunk)
 
             if is_last:
                 # Review Transaction
                 button.right_click()
-                # Address 1/3, 2/3, 3/3
+                # Target network
+                button.right_click()
+                # System fee
+                button.right_click()
+                # Network fee
+                button.right_click()
+                # Valid until
+                button.right_click()
+                # Signer 1 of 1
+                button.right_click()
+                # Account 1/3, 2/3, 33
                 button.right_click()
                 button.right_click()
                 button.right_click()
-                # Amount
+                # Scope
                 button.right_click()
                 # Approve
                 button.both_click()
@@ -125,17 +119,6 @@ class BoilerplateCommand:
             if sw != 0x9000:
                 raise DeviceException(error_code=sw, ins=InsType.INS_SIGN_TX)
 
-        # response = der_sig_len (1) ||
-        #            der_sig (var) ||
-        #            v (1)
-        offset: int = 0
-        der_sig_len: int = response[offset]
-        offset += 1
-        der_sig: bytes = response[offset:offset + der_sig_len]
-        offset += der_sig_len
-        v: int = response[offset]
-        offset += 1
+        assert len(response) == 72
 
-        assert len(response) == 1 + der_sig_len + 1
-
-        return v, der_sig
+        return response

@@ -26,10 +26,6 @@ class WrongResponseLengthError(Exception):
     pass
 
 
-class DisplayBip32PathFailError(Exception):
-    pass
-
-
 class DisplayAddressFailError(Exception):
     pass
 
@@ -55,4 +51,44 @@ class BadStateError(Exception):
 
 
 class SignatureFailError(Exception):
+    pass
+
+
+class TxRejectSignError(Exception):
+    pass
+
+
+class BIP44BadPurposeError(Exception):
+    pass
+
+
+class BIP44BadCoinTypeError(Exception):
+    pass
+
+
+class BIP44BadAccountNotHardenedError(Exception):
+    pass
+
+
+class BIP44BadAccountError(Exception):
+    pass
+
+
+class BIP44BadBadChangeError(Exception):
+    pass
+
+
+class BIP44BadAddressError(Exception):
+    pass
+
+
+class MagicParsingError(Exception):
+    pass
+
+
+class DisplaySystemFeeFailError(Exception):
+    pass
+
+
+class DisplayNetworkFeeFailError(Exception):
     pass
