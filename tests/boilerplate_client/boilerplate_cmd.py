@@ -85,11 +85,13 @@ class BoilerplateCommand:
 
         return response
 
-    def sign_tx(self, bip44_path: str, transaction: Transaction, button: Button) -> Tuple[int, bytes]:
+    def sign_tx(self, bip44_path: str, transaction: Transaction, network_magic: int, button: Button) -> Tuple[int, bytes]:
         sw: int
         response: bytes = b""
 
-        for is_last, chunk in self.builder.sign_tx(bip44_path=bip44_path, transaction=transaction):
+        for is_last, chunk in self.builder.sign_tx(bip44_path=bip44_path,
+                                                   transaction=transaction,
+                                                   network_magic=network_magic):
             self.transport.send_raw(chunk)
 
             if is_last:
@@ -118,7 +120,5 @@ class BoilerplateCommand:
 
             if sw != 0x9000:
                 raise DeviceException(error_code=sw, ins=InsType.INS_SIGN_TX)
-
-        assert len(response) == 72
 
         return response

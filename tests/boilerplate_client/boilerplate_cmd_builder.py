@@ -166,7 +166,8 @@ class BoilerplateCommandBuilder:
                               p2=0x00,
                               cdata=cdata)
 
-    def sign_tx(self, bip44_path: str, transaction: payloads.Transaction) -> Iterator[Tuple[bool, bytes]]:
+    def sign_tx(self, bip44_path: str, transaction: payloads.Transaction, network_magic: int
+                ) -> Iterator[Tuple[bool, bytes]]:
         """Command builder for INS_SIGN_TX.
 
         Parameters
@@ -174,6 +175,7 @@ class BoilerplateCommandBuilder:
         bip44_path : str
             String representation of BIP44 path.
         transaction : payloads.Transaction
+        network_magic: network magic for MainNet, TestNet or a private network.
 
         Yields
         -------
@@ -190,12 +192,12 @@ class BoilerplateCommandBuilder:
                                     p2=0x80,
                                     cdata=cdata)
 
-        network_magic = struct.pack("I", 860833102)
+        magic = struct.pack("I", network_magic)
         yield False, self.serialize(cla=self.CLA,
                                     ins=InsType.INS_SIGN_TX,
                                     p1=0x01,
                                     p2=0x80,
-                                    cdata=network_magic)
+                                    cdata=magic)
 
         with serialization.BinaryWriter() as writer:
             transaction.serialize_unsigned(writer)
