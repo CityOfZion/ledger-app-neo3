@@ -12,8 +12,11 @@
  * Maximum signer_t count in a transaction.
  * Actual network value is 16, we limit it because we run out of SRAM
  * The individual signers must be unique as compared by the account field.
+ *
+ * For this first release we limit to 1 signer (being the Sender) until the SRAM issue
+ * is resolved.
  */
-#define MAX_TX_SIGNERS 8
+#define MAX_TX_SIGNERS 1
 /**
  * The minimum number of signers. First signer is always the sender of the tx
  */
@@ -63,7 +66,9 @@ typedef enum {
     ATTRIBUTES_UNSUPPORTED_TYPE = -24,
     ATTRIBUTES_DUPLICATE_TYPE = -25,
     SCRIPT_LENGTH_PARSING_ERROR = -26,
-    SCRIPT_LENGTH_VALUE_ERROR = -27  // requesting more data than available
+    SCRIPT_LENGTH_VALUE_ERROR = -27,  // requesting more data than available
+    SIGNER_SCOPE_GROUPS_NOT_ALLOWED_ERROR = -28,
+    SIGNER_SCOPE_CONTRACTS_NOT_ALLOWED_ERROR = -29
 } parser_status_e;
 
 typedef enum {

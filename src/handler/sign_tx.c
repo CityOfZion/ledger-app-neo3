@@ -83,10 +83,7 @@ int handler_sign_tx(buffer_t *cdata, uint8_t chunk, bool more) {
             parser_status_e status = transaction_deserialize(&buf, &G_context.tx_info.transaction);
             PRINTF("Parsing status: %d.\n", status);
             if (status != PARSING_OK) {
-                char status_char[1];
-                // doesn't matter that the actual parser status value is negative, just read it as an int8_t on the
-                // receiver side to get the error code
-                snprintf(status_char, 1, "%x", (uint8_t) status);
+                char status_char[1] = {(uint8_t) status};
                 return io_send_response(&(const buffer_t){.ptr = (unsigned char *) status_char, .size = 1, .offset = 0},
                                         SW_TX_PARSING_FAIL);
             }

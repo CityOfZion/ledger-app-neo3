@@ -25,6 +25,9 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
         return INVALID_LENGTH_ERROR;
     }
 
+    // This can actually never fail because 'buf' would contain the tx data send in the 3rd apdu.
+    // If the 3rd apdu has no data, it will fail in the dispatcher.
+    // Leaving it just incase code might change in the future. Better safe than sorrow
     if (!buffer_read_u8(buf, &tx->version)) {
         return VERSION_PARSING_ERROR;
     }
@@ -66,64 +69,28 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     }
 
     tx->signers_size = (uint8_t) signer_length;
-    for (int i = 0; i < tx->signers_size; i++) {
-        tx->signers[i].account = (uint8_t *) (buf->ptr + buf->offset);
-        if (!buffer_seek_cur(buf, UINT160_LEN)) {
-            return SIGNER_ACCOUNT_PARSING_ERROR;
-        }
+    tx->signers[0].account = (uint8_t *) (buf->ptr + buf->offset);
+    if (!buffer_seek_cur(buf, UINT160_LEN)) {
+        return SIGNER_ACCOUNT_PARSING_ERROR;
+    }
 
-        // Check that the signer is unique by comparing its account property vs existing accounts
-        // 'i' determines how many signers (and thus accounts) have been added so far.
-        for (int s = 0; s < i; s++) {
-            if (!os_secure_memcmp(tx->signers[s].account, tx->signers[i].account, UINT160_LEN)) {
-                return SIGNER_ACCOUNT_DUPLICATE_ERROR;
-            }
-        }
+    uint8_t value;
+    if (!buffer_read_u8(buf, &value)) {
+        return SIGNER_SCOPE_PARSING_ERROR;
+    }
+    tx->signers[0].scope = (witness_scope_e) value;
 
-        uint8_t value;
-        if (!buffer_read_u8(buf, &value)) {
-            return SIGNER_SCOPE_PARSING_ERROR;
-        }
-        tx->signers[i].scope = (witness_scope_e) value;
+    // Scope GLOBAL is not allowed to have other flags
+    if ((((witness_scope_e) value & GLOBAL) == GLOBAL) && ((witness_scope_e) value != GLOBAL)) {
+        return SIGNER_SCOPE_VALUE_ERROR_GLOBAL_FLAG;
+    }
 
-        // Scope GLOBAL is not allowed to have other flags
-        if ((((witness_scope_e) value & GLOBAL) == GLOBAL) && ((witness_scope_e) value != GLOBAL)) {
-            return SIGNER_SCOPE_VALUE_ERROR_GLOBAL_FLAG;
-        }
+    if (((witness_scope_e) value & CUSTOM_CONTRACTS) == CUSTOM_CONTRACTS) {
+        return SIGNER_SCOPE_CONTRACTS_NOT_ALLOWED_ERROR;
+    }
 
-        uint64_t var_int_length;
-        if (((witness_scope_e) value & CUSTOM_CONTRACTS) == CUSTOM_CONTRACTS) {
-            if (!buffer_read_varint(buf, &var_int_length)) {
-                return SIGNER_ALLOWED_CONTRACTS_LENGTH_PARSING_ERROR;
-            }
-            if (var_int_length > MAX_SIGNER_SUB_ITEMS) {
-                return SIGNER_ALLOWED_CONTRACTS_LENGTH_VALUE_ERROR;
-            }
-            tx->signers[i].allowed_contracts_size = var_int_length;
-            for (size_t j = 0; j < var_int_length; j++) {
-                tx->signers[i].allowed_contracts[j] = (uint8_t *) (buf->ptr + buf->offset);
-                if (!buffer_seek_cur(buf, UINT160_LEN)) {
-                    return SIGNER_ALLOWED_CONTRACT_PARSING_ERROR;
-                }
-            }
-        }
-
-        var_int_length = 0;
-        if (((witness_scope_e) value & CUSTOM_GROUPS) == CUSTOM_GROUPS) {
-            if (!buffer_read_varint(buf, &var_int_length)) {
-                return SIGNER_ALLOWED_GROUPS_LENGTH_PARSING_ERROR;
-            }
-            if (var_int_length > MAX_SIGNER_SUB_ITEMS) {
-                return SIGNER_ALLOWED_GROUPS_LENGTH_VALUE_ERROR;
-            }
-            tx->signers[i].allowed_groups_size = var_int_length;
-            for (size_t j = 0; j < var_int_length; j++) {
-                tx->signers[i].allowed_groups[j] = (uint8_t *) (buf->ptr + buf->offset);
-                if (!buffer_seek_cur(buf, ECPOINT_LEN)) {
-                    return SIGNER_ALLOWED_CONTRACT_PARSING_ERROR;
-                }
-            }
-        }
+    if (((witness_scope_e) value & CUSTOM_GROUPS) == CUSTOM_GROUPS) {
+        return SIGNER_SCOPE_GROUPS_NOT_ALLOWED_ERROR;
     }
 
     // Parse transaction attributes
@@ -131,8 +98,8 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     if (!buffer_read_varint(buf, &attributes_length)) {
         return ATTRIBUTES_LENGTH_PARSING_ERROR;
     }
-    // Yes (MAX_TX_SIGNERS - signer length) is what the actual network does
-    if (attributes_length > MAX_ATTRIBUTES || attributes_length > (MAX_TX_SIGNERS - signer_length)) {
+
+    if (attributes_length > MAX_ATTRIBUTES) {
         return ATTRIBUTES_LENGTH_VALUE_ERROR;
     }
     tx->attributes_size = (uint8_t) attributes_length;
@@ -140,7 +107,7 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     if (tx->attributes_size > 0) {
         for (int i = 0; i < tx->attributes_size; i++) {
             uint8_t attribute_type;
-            if (!buffer_read_u8(buf, &attribute_type) && attribute_type != HIGH_PRIORITY) {
+            if (!buffer_read_u8(buf, &attribute_type) || attribute_type != HIGH_PRIORITY) {
                 return ATTRIBUTES_UNSUPPORTED_TYPE;
             }
             // check for duplicates
@@ -160,7 +127,7 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     }
 
     tx->script = (uint8_t *) (buf->ptr + buf->offset);
-    if (script_length > 0xFFFF || !buffer_seek_cur(buf, script_length)) {
+    if (script_length > 0xFFFF || script_length == 0 || !buffer_seek_cur(buf, script_length)) {
         return SCRIPT_LENGTH_VALUE_ERROR;
     }
     tx->script_size = (uint16_t) script_length;

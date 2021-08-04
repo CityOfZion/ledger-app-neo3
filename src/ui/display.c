@@ -41,20 +41,8 @@ static char g_network_fee[30];
 static char g_network[11];            // Target network the tx in tended for
                                       // ("MainNet", "TestNet" or uint32 network number for private nets)
 static char g_valid_until_block[11];  // uint32 (=max 10 chars) + \0
+static char g_account[41];            // UInt160 + \0
 static char g_scope[28];              // Longest combination is: "By Entry, Contracts, Groups" (27) + \0
-static char g_title[64];              // generic step title
-static char g_text[64];               // generic step text
-
-/**
- * Hold state around displaying Signers and their properties
- */
-struct display_ctx_t {
-    enum e_state current_state;  // screen state
-    int8_t s_index;              // track which signer is to be displayed
-    uint8_t p_index;             // track which signer property is displayed (see also: e_signer_state)
-    int8_t c_index;              // track which signer.contract is to be displayed
-    int8_t g_index;              // track which signer.group is to be displayed
-} display_ctx;
 
 // Step with approve button
 UX_STEP_CB(ux_display_approve_step,
@@ -111,17 +99,21 @@ UX_STEP_NOCB(ux_display_validuntilblock_step,
                  .text = g_valid_until_block,
              });
 
-// 3 special steps for runtime dynamic screen generation, used to display attached signers and their properties
-UX_STEP_INIT(ux_upper_delimiter, NULL, NULL, { display_next_state(true); });
+UX_STEP_NOCB(ux_display_sender_step, nn, {"Review", "Sender"});
 
-UX_STEP_NOCB(ux_display_generic,
+UX_STEP_NOCB(ux_display_senderaccount_step,
              bnnn_paging,
              {
-                 .title = g_title,
-                 .text = g_text,
+                 .title = "Account",
+                 .text = g_account,
              });
 
-UX_STEP_INIT(ux_lower_delimiter, NULL, NULL, { display_next_state(false); });
+UX_STEP_NOCB(ux_display_senderscope_step,
+             bnnn_paging,
+             {
+                 .title = "Scope",
+                 .text = g_scope,
+             });
 
 // FLOW to display transaction information:
 // #1 screen : eye icon + "Review Transaction"
@@ -138,20 +130,34 @@ UX_FLOW(ux_display_transaction_flow,
         &ux_display_systemfee_step,
         &ux_display_networkfee_step,
         &ux_display_validuntilblock_step,
-        &ux_upper_delimiter,  // special step that won't be shown, but used for runtime displaying
-                              // dynamics screens when applicable
-        &ux_display_generic,  // will be used to dynamically display Signers
-        &ux_lower_delimiter,  // special step that won't be shown, but used for runtime displaying
-                              // dynamics screens when applicable
+        &ux_display_sender_step,
+        &ux_display_senderaccount_step,
+        &ux_display_senderscope_step,
         &ux_display_approve_step,
         &ux_display_reject_step);
 
-void reset_signer_display_state() {
-    display_ctx.current_state = STATIC_SCREEN;
-    display_ctx.s_index = 0;
-    display_ctx.g_index = -1;
-    display_ctx.c_index = -1;
-    display_ctx.p_index = 0;
+void parse_scope_name(witness_scope_e scope) {
+    size_t len = 0;
+    if (scope == NONE) {
+        snprintf(g_scope, sizeof(g_scope), "%s", "None");
+    }
+
+    if (scope == GLOBAL) {
+        snprintf(g_scope, sizeof(g_scope), "%s", "Global");
+    }
+
+    if (scope & CALLED_BY_ENTRY) {
+        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "By Entry,");
+    };
+
+    if (scope & CUSTOM_CONTRACTS) {
+        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "Contracts,");
+    };
+
+    if (scope & CUSTOM_GROUPS) {
+        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "Groups,");
+    };
+    g_scope[len - 1] = '\0';  // take of the comma
 }
 
 int ui_display_transaction() {
@@ -192,252 +198,18 @@ int ui_display_transaction() {
     snprintf(g_valid_until_block, sizeof(g_valid_until_block), "%d", G_context.tx_info.transaction.valid_until_block);
     PRINTF("Valid until: %s\n", g_valid_until_block);
 
+    signer_t sender = G_context.tx_info.transaction.signers[0];
+
+    memset(g_account, 0, sizeof(g_account));
+    snprintf(g_account, sizeof(g_account), "%.*H", 20, sender.account);
+    PRINTF("Account: %s\n", g_account);
+
+    memset(g_scope, 0, sizeof(g_scope));
+    parse_scope_name(sender.scope);
+    PRINTF("Scope: %s\n", g_scope);
+
     g_validate_callback = &ui_action_validate_transaction;
-    reset_signer_display_state();
     ux_flow_init(0, ux_display_transaction_flow, NULL);
 
     return 0;
-}
-
-int parse_scope_name(witness_scope_e scope) {
-    size_t len = 0;
-    if (scope == NONE) {
-        return snprintf(g_scope, sizeof(g_scope), "%s", "None");
-    }
-
-    if (scope == GLOBAL) {
-        return snprintf(g_scope, sizeof(g_scope), "%s", "Global");
-    }
-
-    if (scope & CALLED_BY_ENTRY) {
-        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "By Entry,");
-    };
-
-    if (scope & CUSTOM_CONTRACTS) {
-        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "Contracts,");
-    };
-
-    if (scope & CUSTOM_GROUPS) {
-        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "Groups,");
-    };
-
-    return len - 1;  // take of the comma
-}
-
-// This is a special function you must call for bnnn_paging to work properly in an edgecase.
-// It does some weird stuff with the `G_ux` global which is defined by the SDK.
-// No need to dig deeper into the code, a simple copy paste will do.
-void bnnn_paging_edgecase() {
-    G_ux.flow_stack[G_ux.stack_count - 1].prev_index = G_ux.flow_stack[G_ux.stack_count - 1].index - 2;
-    G_ux.flow_stack[G_ux.stack_count - 1].index--;
-    ux_flow_relayout();
-}
-
-static enum e_signer_state signer_property[7] = {START, INDEX, ACCOUNT, SCOPE, CONTRACTS, GROUPS, END};
-
-void next_prop() {
-    uint8_t *idx = &display_ctx.p_index;
-    signer_t signer = G_context.tx_info.transaction.signers[display_ctx.s_index];
-
-    if (*idx < (uint8_t) CONTRACTS) (*idx)++;
-
-    if (signer_property[*idx] == CONTRACTS) {
-        // we start at -1
-        if (display_ctx.c_index + 1 < signer.allowed_contracts_size) {
-            display_ctx.c_index++;
-            return;  // let it display the contract
-        }
-        display_ctx.c_index++;
-        (*idx)++;  // advance state to GROUPS
-    }
-    if (signer_property[*idx] == GROUPS) {
-        // we start at -1
-        if (display_ctx.g_index + 1 < signer.allowed_groups_size) {
-            display_ctx.g_index++;
-            return;  // let it display the group
-        }
-        display_ctx.g_index++;
-        (*idx)++;  // advance state to END
-    }
-
-    // if we displayed all properties of the current signer
-    if (signer_property[*idx] == END) {
-        // are there more signers?
-        if (display_ctx.s_index + 1 == G_context.tx_info.transaction.signers_size) {
-            // no more signers
-            return;
-        } else {
-            // more signers, advance signer index and reset some properties
-            display_ctx.s_index++;
-            display_ctx.c_index = -1;
-            display_ctx.g_index = -1;
-            *idx = (uint8_t) START;
-            next_prop();
-        }
-    }
-}
-
-void prev_prop() {
-    uint8_t *idx = &display_ctx.p_index;
-    signer_t signer = G_context.tx_info.transaction.signers[display_ctx.s_index];
-
-    // from first dynamic screen, go back to first static
-    if (display_ctx.s_index == 0 && signer_property[*idx] == INDEX) {
-        *idx = (uint8_t) START;
-        return;
-    }
-
-    // from static screen below lower_delimiter screen, go to last dynamic
-    if (signer_property[*idx] == END) {
-        (*idx)--;  // reverse to GROUPS
-    }
-
-    if (signer_property[*idx] == GROUPS) {
-        if (display_ctx.g_index > 0) {
-            display_ctx.g_index--;
-            return;  // let it display the group
-        }
-        display_ctx.g_index--;  // make sure we end up at -1 as that is what next_prop() expects
-                                // when going forward
-        (*idx)--;               // advance state to CONTRACTS
-    }
-
-    if (signer_property[*idx] == CONTRACTS) {
-        if (display_ctx.c_index > 0) {
-            display_ctx.c_index--;
-            return;  // let it display the contract
-        }
-        display_ctx.c_index--;  // make sure we end up at -1 as that is what next_prop() expects
-                                // when going forward
-        // no need to reverse state to SCOPE, will be done on the next line
-    }
-    (*idx)--;
-
-    // we've exhausted all properties, check if there are more signers
-    if (signer_property[*idx] == START) {
-        if (display_ctx.s_index > 0) {
-            display_ctx.s_index--;
-            signer = G_context.tx_info.transaction.signers[display_ctx.s_index];
-            *idx = (uint8_t) END;  // set property index to end
-            display_ctx.g_index = signer.allowed_groups_size;
-            display_ctx.c_index = signer.allowed_contracts_size;
-            prev_prop();
-        }
-    }
-}
-
-bool get_next_data(enum e_direction direction) {
-    if (direction == DIRECTION_FORWARD) {
-        next_prop();
-    } else {
-        prev_prop();
-    }
-
-    signer_t s = G_context.tx_info.transaction.signers[display_ctx.s_index];
-    enum e_signer_state display = signer_property[display_ctx.p_index];
-
-    if (display_ctx.s_index == G_context.tx_info.transaction.signers_size &&
-        signer_property[display_ctx.p_index] == END) {
-        return false;
-    }
-
-    switch (display) {
-        case START: {
-            return false;
-        }
-        case INDEX: {
-            snprintf(g_title, sizeof(g_title), "Signer");
-            uint8_t signers_size = G_context.tx_info.transaction.signers_size;
-            snprintf(g_text, sizeof(g_text), "%d of %d", display_ctx.s_index + 1, signers_size);
-            return true;
-        }
-        case ACCOUNT: {
-            snprintf(g_title, sizeof(g_title), "Account");
-            snprintf(g_text, sizeof(g_text), "%.*H", 20, s.account);
-            return true;
-        }
-        case SCOPE: {
-            snprintf(g_title, sizeof(g_title), "Scope");
-            int scope_size = parse_scope_name(s.scope);
-            snprintf(g_text, sizeof(g_text), "%.*s", scope_size, g_scope);
-            return true;
-        }
-        case CONTRACTS: {
-            s = G_context.tx_info.transaction.signers[display_ctx.s_index];
-            snprintf(g_title, sizeof(g_title), "Contract %d of %d", display_ctx.c_index + 1, s.allowed_contracts_size);
-            snprintf(g_text, sizeof(g_text), "%.*H", UINT160_LEN, s.allowed_contracts[display_ctx.c_index]);
-            return true;
-        }
-        case GROUPS: {
-            s = G_context.tx_info.transaction.signers[display_ctx.s_index];
-            snprintf(g_title, sizeof(g_title), "Group %d of %d", display_ctx.g_index + 1, s.allowed_groups_size);
-            snprintf(g_text, sizeof(g_text), "%.*H", ECPOINT_LEN, s.allowed_groups[display_ctx.g_index]);
-            return true;
-        }
-        case END: {
-            return false;
-        }
-    }
-}
-
-// Taken from Ledger's advanced display management docs
-void display_next_state(bool is_upper_delimiter) {
-    if (is_upper_delimiter) {  // We're called from the upper delimiter.
-        if (display_ctx.current_state == STATIC_SCREEN) {
-            // Fetch new data.
-            bool dynamic_data = get_next_data(DIRECTION_FORWARD);
-            if (dynamic_data) {
-                // We found some data to display so we now enter in dynamic mode.
-                display_ctx.current_state = DYNAMIC_SCREEN;
-            }
-
-            // Move to the next step, which will display the screen.
-            ux_flow_next();
-        } else {
-            // The previous screen was NOT a static screen, so we were already in a dynamic screen.
-
-            // Fetch new data.
-            bool dynamic_data = get_next_data(DIRECTION_BACKWARD);
-            if (dynamic_data) {
-                // We found some data so simply display it.
-                ux_flow_next();
-            } else {
-                // There's no more dynamic data to display, so
-                // update the current state accordingly.
-                display_ctx.current_state = STATIC_SCREEN;
-
-                // Display the previous screen which should be a static one.
-                ux_flow_prev();
-            }
-        }
-    } else {
-        // We're called from the lower delimiter.
-        if (display_ctx.current_state == STATIC_SCREEN) {
-            // Fetch new data.
-            bool dynamic_data = get_next_data(DIRECTION_BACKWARD);
-            if (dynamic_data) {
-                // We found some data to display so enter in dynamic mode.
-                display_ctx.current_state = DYNAMIC_SCREEN;
-            }
-
-            // Display the data.
-            ux_flow_prev();
-        } else {
-            // We're being called from a dynamic screen, so the user was already browsing the array.
-
-            // Fetch new data.
-            bool dynamic_data = get_next_data(DIRECTION_FORWARD);
-            if (dynamic_data) {
-                // We found some data, so display it.
-                // Similar to `ux_flow_prev()` but updates layout to account for `bnnn_paging`'s
-                // weird behaviour.
-                bnnn_paging_edgecase();
-            } else {
-                // We found no data so make sure we update the state accordingly.
-                display_ctx.current_state = STATIC_SCREEN;
-                // Display the next screen
-                ux_flow_next();
-            }
-        }
-    }
 }

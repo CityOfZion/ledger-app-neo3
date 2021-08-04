@@ -28,6 +28,19 @@ def sw_h_path():
     return sw_h_path
 
 
+@pytest.fixture(scope="module")
+def types_h_path():
+    # path with tests
+    conftest_folder_path: Path = Path(__file__).parent
+    # types.h should be in src/types.h
+    types_h_path = conftest_folder_path.parent / "src" / "transaction" / "types.h"
+
+    if not types_h_path.is_file():
+        raise FileNotFoundError(f"Can't find types.h: '{types_h_path}'")
+
+    return types_h_path
+
+
 @pytest.fixture(scope="session")
 def hid(pytestconfig):
     return pytestconfig.getoption("hid")
