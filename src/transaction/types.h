@@ -3,7 +3,6 @@
 #include <stddef.h>  // size_t
 #include <stdint.h>  // uint*_t
 
-#define MAX_TX_LEN  510  // for a single apdu
 #define ADDRESS_LEN 20
 #define UINT160_LEN 20
 #define ECPOINT_LEN 33
@@ -13,7 +12,7 @@
  * Actual network value is 16, we limit it because we run out of SRAM
  * The individual signers must be unique as compared by the account field.
  */
-#define MAX_TX_SIGNERS 8
+#define MAX_TX_SIGNERS 2
 /**
  * The minimum number of signers. First signer is always the sender of the tx
  */
@@ -22,7 +21,7 @@
  * Limits the maximum 'allowed_contracts' or 'allowed_groups' of a signer_t
  * Actual network value is 16, we limit it because we run out of SRAM
  */
-#define MAX_SIGNER_SUB_ITEMS 8
+#define MAX_SIGNER_SUB_ITEMS 2
 /**
  * The NEO network actually limits the attributes to (16 - signers count).
  * However, there currently only exist 2 attribute types, both can only be attached once

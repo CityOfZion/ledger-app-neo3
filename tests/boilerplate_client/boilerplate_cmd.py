@@ -107,7 +107,7 @@ class BoilerplateCommand:
                 button.right_click()
                 # Signer 1 of 1
                 button.right_click()
-                # Account 1/3, 2/3, 33
+                # Account 1/3, 2/3, 3/3
                 button.right_click()
                 button.right_click()
                 button.right_click()

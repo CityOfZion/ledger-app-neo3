@@ -66,7 +66,7 @@ else
     DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=128
 endif
 
-DEBUG = 1
+DEBUG = 0
 ifneq ($(DEBUG),0)
     DEFINES += HAVE_PRINTF
     ifeq ($(TARGET_NAME),TARGET_NANOX)

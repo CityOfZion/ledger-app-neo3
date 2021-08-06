@@ -23,7 +23,7 @@
 /**
  * Maximum transaction length (bytes).
  */
-#define MAX_TRANSACTION_LEN 1024  // TODO: look into what we should say is the  max tx length
+#define MAX_TRANSACTION_LEN 1024
 
 /**
  * Maximum signature length (bytes).

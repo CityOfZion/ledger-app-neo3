@@ -14,4 +14,4 @@
  * @return PARSING_OK if success, error status otherwise.
  *
  */
-parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx);  // __attribute__((optnone));
+parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx);

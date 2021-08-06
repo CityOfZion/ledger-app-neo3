@@ -17,14 +17,18 @@
 
 #include "deserialize.h"
 #include "types.h"
+#include "constants.h"
 #include "../common/buffer.h"
 #include "stdlib.h"
 
 parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
-    if (buf->size > MAX_TX_LEN) {
+    if (buf->size > MAX_TRANSACTION_LEN) {
         return INVALID_LENGTH_ERROR;
     }
 
+    // This can actually never fail because 'buf' would contain the tx data send in the 3rd apdu.
+    // If the 3rd apdu has no data, it will fail in the dispatcher.
+    // Leaving it just in case code might change in the future. Better safe than sorrow
     if (!buffer_read_u8(buf, &tx->version)) {
         return VERSION_PARSING_ERROR;
     }
@@ -131,8 +135,9 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     if (!buffer_read_varint(buf, &attributes_length)) {
         return ATTRIBUTES_LENGTH_PARSING_ERROR;
     }
-    // Yes (MAX_TX_SIGNERS - signer length) is what the actual network does
-    if (attributes_length > MAX_ATTRIBUTES || attributes_length > (MAX_TX_SIGNERS - signer_length)) {
+    // The actual network does (MAX_TX_SIGNERS (16) - signer length) but due to memory constraints we lowered the
+    // MAX_ATTRIBUTES and hardcode the attributes limit to 2
+    if (attributes_length > MAX_ATTRIBUTES || attributes_length > 2) {
         return ATTRIBUTES_LENGTH_VALUE_ERROR;
     }
     tx->attributes_size = (uint8_t) attributes_length;
@@ -140,7 +145,7 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     if (tx->attributes_size > 0) {
         for (int i = 0; i < tx->attributes_size; i++) {
             uint8_t attribute_type;
-            if (!buffer_read_u8(buf, &attribute_type) && attribute_type != HIGH_PRIORITY) {
+            if (!buffer_read_u8(buf, &attribute_type) || attribute_type != HIGH_PRIORITY) {
                 return ATTRIBUTES_UNSUPPORTED_TYPE;
             }
             // check for duplicates
@@ -160,7 +165,7 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     }
 
     tx->script = (uint8_t *) (buf->ptr + buf->offset);
-    if (script_length > 0xFFFF || !buffer_seek_cur(buf, script_length)) {
+    if (script_length > 0xFFFF || script_length == 0 || !buffer_seek_cur(buf, script_length)) {
         return SCRIPT_LENGTH_VALUE_ERROR;
     }
     tx->script_size = (uint16_t) script_length;

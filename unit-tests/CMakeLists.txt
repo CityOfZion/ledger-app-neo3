@@ -50,7 +50,7 @@ add_library(varint SHARED ../src/common/varint.c)
 add_library(apdu_parser SHARED ../src/apdu/parser.c)
 add_library(transaction_deserialize ../src/transaction/deserialize.c)
 
-target_link_libraries(test_buffer PUBLIC cmocka gcov read write varint buffer)
+target_link_libraries(test_buffer PUBLIC cmocka gcov buffer varint write read)
 target_link_libraries(test_format PUBLIC cmocka gcov format)
 target_link_libraries(test_write PUBLIC cmocka gcov write)
 target_link_libraries(test_apdu_parser PUBLIC cmocka gcov apdu_parser)
