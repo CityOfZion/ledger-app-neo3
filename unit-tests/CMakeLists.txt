@@ -54,14 +54,6 @@ target_link_libraries(test_buffer PUBLIC cmocka gcov buffer varint write read)
 target_link_libraries(test_format PUBLIC cmocka gcov format)
 target_link_libraries(test_write PUBLIC cmocka gcov write)
 target_link_libraries(test_apdu_parser PUBLIC cmocka gcov apdu_parser)
-target_link_libraries(test_tx_parser PUBLIC
-                      cmocka
-                      gcov
-                      write
-                      buffer
-                      read
-                      varint
-                      transaction_deserialize)
 
 add_test(test_buffer test_buffer)
 add_test(test_format test_format)

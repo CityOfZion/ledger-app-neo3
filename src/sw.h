@@ -41,17 +41,13 @@
  */
 #define SW_TX_USER_CONFIRMATION_FAIL 0xB003
 /**
- * Status word for fail of transaction hash.
+ * Status word for bad signing state.
  */
-#define SW_TX_HASH_FAIL 0xB004
-/**
- * Status word for bad state.
- */
-#define SW_BAD_STATE 0xB005
+#define SW_BAD_STATE 0xB004
 /**
  * Status word for signing failure.
  */
-#define SW_SIGN_FAIL 0xB006
+#define SW_SIGN_FAIL 0xB005
 /**
  * Status word for invalid BIP44 purpose field
  */
@@ -81,12 +77,12 @@
  */
 #define SW_MAGIC_PARSING_FAIL 0xB106
 /**
- * Status word for failing to parse system fee into a format that
+ * Status word for failing to parse the system fee into a format that
  * can be displayed on the device
  */
 #define SW_DISPLAY_SYSTEM_FEE_FAIL 0xb107
 /**
- * Status word for failing to parse network fee into a format that
+ * Status word for failing to parse the network fee into a format that
  * can be displayed on the device
  */
 #define SW_DISPLAY_NETWORK_FEE_FAIL 0xb108

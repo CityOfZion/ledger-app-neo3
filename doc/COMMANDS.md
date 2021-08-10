@@ -81,12 +81,18 @@ TODO: update with final list!
 | 0x6D00 | `SW_INS_NOT_SUPPORTED` | No command exists with `INS` |
 | 0x6E00 | `SW_CLA_NOT_SUPPORTED` | Bad `CLA` used for this application |
 | 0xB000 | `SW_WRONG_RESPONSE_LENGTH` | Wrong response lenght (buffer size problem) |
-| 0xB001 | `SW_DISPLAY_BIP32_PATH_FAIL` | BIP32 path conversion to string failed |
-| 0xB002 | `SW_DISPLAY_ADDRESS_FAIL` | Address conversion to string failed |
-| 0xB003 | `SW_DISPLAY_AMOUNT_FAIL` | Amount conversion to string failed |
-| 0xB004 | `SW_WRONG_TX_LENGTH` | Wrong raw transaction lenght |
-| 0xB005 | `SW_TX_PARSING_FAIL` | Failed to parse raw transaction |
-| 0xB006 | `SW_TX_HASH_FAIL` | Failed to compute hash digest of raw transaction |
-| 0xB007 | `SW_BAD_STATE` | Security issue with bad state |
-| 0xB008 | `SW_SIGNATURE_FAIL` | Signature of raw transaction failed |
+| 0xB001 | `SW_WRONG_TX_LENGTH` | Max transaction length exceeded |
+| 0xB002 | `SW_TX_PARSING_FAIL` | Failed to parse raw transaction |
+| 0xB003 | `SW_TX_USER_CONFIRMATION_FAIL` | User rejected TX signing |
+| 0xB004 | `SW_BAD_STATE` | Incorrect sign tx state. E.g. wrong order of data sending |
+| 0xB005 | `SW_SIGN_FAIL` | Failed to create signature of data |
+| 0xB100 | `SW_BIP44_BAD_PURPOSE` | Invalid BIP44 purpose field |
+| 0xB101 | `SW_BIP44_BAD_COIN_TYPE` | BIP44 coin type does not match NEO |
+| 0xB102 | `SW_BIP44_ACCOUNT_NOT_HARDENED` | BIP44 account is not hardened |
+| 0xB103 | `SW_BIP44_BAD_ACCOUNT` | BIP44 account value exceeds 10 |
+| 0xB104 | `SW_BIP44_BAD_CHANGE` | BIP44 change field is not 'internal' or 'external' |
+| 0xB105 | `SW_BIP44_BAD_ADDRESS` | BIP44 address value exceeds 5000 |
+| 0xB106 | `SW_MAGIC_PARSING_FAIL` | Failed to parse NEO network magic |
+| 0xB107 | `SW_DISPLAY_SYSTEM_FEE_FAIL` | Status word for failing to parse the system fee into a format that can be displayed on the device |
+| 0xB108 | `SW_DISPLAY_NETWORK_FEE_FAIL` | Status word for failing to parse the network fee into a format that can be displayed on the device |
 | 0x9000 | `OK` | Success |

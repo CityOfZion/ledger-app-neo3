@@ -53,3 +53,7 @@ It outputs 4 artifacts:
 - `speculos-log` within APDU command/response when executing end-to-end tests
 - `code-coverage` within HTML details of code coverage
 - `documentation` within HTML auto-generated documentation
+
+## Special thanks
+
+A special thanks goes out to [Edouard Merle](https://github.com/Saltari) of Ledger for answering support questions, follow up to bug reports and assisting in tracking down an issue :heart:.
