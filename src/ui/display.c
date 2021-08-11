@@ -34,6 +34,7 @@
 #include "action/validate.h"
 #include "../transaction/types.h"
 #include "../common/format.h"
+#include "utils.h"
 
 static action_validate_cb g_validate_callback;
 static char g_system_fee[30];
@@ -45,17 +46,17 @@ static char g_scope[28];              // Longest combination is: "By Entry, Cont
 static char g_title[64];              // generic step title
 static char g_text[64];               // generic step text
 
-/**
- * Hold state around displaying Signers and their properties
- */
-struct display_ctx_t {
-    enum e_state current_state;  // screen state
-    int8_t s_index;              // track which signer is to be displayed
-    uint8_t p_index;             // track which signer property is displayed (see also: e_signer_state)
-    int8_t c_index;              // track which signer.contract is to be displayed
-    int8_t g_index;              // track which signer.group is to be displayed
-} display_ctx;
+static char g_address[35];  // 34 + \0
 
+// Step with icon and text
+UX_STEP_NOCB(ux_display_confirm_addr_step, pn, {&C_icon_eye, "Confirm Address"});
+// Step with title/text for address
+UX_STEP_NOCB(ux_display_address_step,
+             bnnn_paging,
+             {
+                 .title = "Address",
+                 .text = g_address,
+             });
 // Step with approve button
 UX_STEP_CB(ux_display_approve_step,
            pb,
@@ -73,6 +74,48 @@ UX_STEP_CB(ux_display_reject_step,
                &C_icon_crossmark,
                "Reject",
            });
+
+// FLOW to display address:
+// #1 screen: eye icon + "Confirm Address"
+// #2 screen: display address
+// #3 screen: approve button
+// #4 screen: reject button
+UX_FLOW(ux_display_pubkey_flow,
+        &ux_display_confirm_addr_step,
+        &ux_display_address_step,
+        &ux_display_approve_step,
+        &ux_display_reject_step);
+
+int ui_display_address() {
+    if (G_context.req_type != CONFIRM_ADDRESS || G_context.state != STATE_NONE) {
+        G_context.state = STATE_NONE;
+        return io_send_sw(SW_BAD_STATE);
+    }
+
+    memset(g_address, 0, sizeof(g_address));
+    uint8_t address[ADDRESS_LEN] = {0};  // address in base58 check encoded format
+    if (!address_from_pubkey(G_context.raw_public_key, address, sizeof(address))) {
+        return io_send_sw(SW_CONVERT_TO_ADDRESS_FAIL);
+    }
+    snprintf(g_address, sizeof(g_address), "%s", address);
+
+    g_validate_callback = &ui_action_validate_pubkey;
+
+    ux_flow_init(0, ux_display_pubkey_flow, NULL);
+
+    return 0;
+}
+
+/**
+ * Hold state around displaying Signers and their properties
+ */
+struct display_ctx_t {
+    enum e_state current_state;  // screen state
+    int8_t s_index;              // track which signer is to be displayed
+    uint8_t p_index;             // track which signer property is displayed (see also: e_signer_state)
+    int8_t c_index;              // track which signer.contract is to be displayed
+    int8_t g_index;              // track which signer.group is to be displayed
+} display_ctx;
 
 // Step with icon and text
 UX_STEP_NOCB(ux_display_review_step,

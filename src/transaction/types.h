@@ -3,7 +3,7 @@
 #include <stddef.h>  // size_t
 #include <stdint.h>  // uint*_t
 
-#define ADDRESS_LEN 20
+#define ADDRESS_LEN 34  // base58 encoded address size
 #define UINT160_LEN 20
 #define ECPOINT_LEN 33
 

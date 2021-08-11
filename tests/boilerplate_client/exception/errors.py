@@ -92,3 +92,7 @@ class DisplaySystemFeeFailError(Exception):
 
 class DisplayNetworkFeeFailError(Exception):
     pass
+
+
+class ConvertToAddressFailError(Exception):
+    pass

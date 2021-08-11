@@ -33,10 +33,11 @@
 #include "../common/buffer.h"
 #include "../common/bip44.h"
 #include "../ui/display.h"
+#include "../helper/send_response.h"
 
-int handler_get_public_key(buffer_t *cdata) {
+int handler_get_public_key(buffer_t *cdata, bool show_on_screen) {
     explicit_bzero(&G_context, sizeof(G_context));
-    G_context.state = STATE_NONE;
+    G_context.state = CONFIRM_ADDRESS;
 
     uint16_t status;
     if (!buffer_read_and_validate_bip44(cdata, G_context.bip44_path, &status)) return io_send_sw(status);
@@ -51,5 +52,9 @@ int handler_get_public_key(buffer_t *cdata) {
     // Clear private key
     explicit_bzero(&private_key, sizeof(private_key));
 
-    return io_send_response(&(const buffer_t){.ptr = public_key.W, .size = 65, .offset = 0}, SW_OK);
+    if (show_on_screen) {
+        return ui_display_address();
+    }
+
+    return helper_send_response_pubkey();
 }

@@ -37,11 +37,13 @@ add_compile_definitions(TEST)
 
 include_directories(../src)
 
+add_executable(test_base58 test_base58.c)
 add_executable(test_buffer test_buffer.c)
 add_executable(test_format test_format.c)
 add_executable(test_write test_write.c)
 add_executable(test_apdu_parser test_apdu_parser.c)
 
+add_library(base58 SHARED ../src/common/base58.c)
 add_library(buffer SHARED ../src/common/buffer.c)
 add_library(read SHARED ../src/common/read.c)
 add_library(write SHARED ../src/common/write.c)
@@ -50,11 +52,13 @@ add_library(varint SHARED ../src/common/varint.c)
 add_library(apdu_parser SHARED ../src/apdu/parser.c)
 add_library(transaction_deserialize ../src/transaction/deserialize.c)
 
+target_link_libraries(test_base58 PUBLIC cmocka gcov base58)
 target_link_libraries(test_buffer PUBLIC cmocka gcov buffer varint write read)
 target_link_libraries(test_format PUBLIC cmocka gcov format)
 target_link_libraries(test_write PUBLIC cmocka gcov write)
 target_link_libraries(test_apdu_parser PUBLIC cmocka gcov apdu_parser)
 
+add_test(test_base58 test_base58)
 add_test(test_buffer test_buffer)
 add_test(test_format test_format)
 add_test(test_write test_write)

@@ -86,3 +86,8 @@
  * can be displayed on the device
  */
 #define SW_DISPLAY_NETWORK_FEE_FAIL 0xb108
+
+/**
+ * Status word for failing to convert public key to NEO address
+ */
+#define SW_CONVERT_TO_ADDRESS_FAIL 0xb200
