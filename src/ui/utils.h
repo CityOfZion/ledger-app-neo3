@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>  // uint*_t
+#include <stdbool.h>
 
 #include "os.h"
 #include "cx.h"
