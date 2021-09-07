@@ -103,6 +103,8 @@ class BoilerplateCommand:
                 button.right_click()
                 # Network fee
                 button.right_click()
+                # Total fees
+                button.right_click()
                 # Valid until
                 button.right_click()
                 # Signer 1 of 1

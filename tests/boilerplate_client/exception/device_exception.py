@@ -27,6 +27,7 @@ class DeviceException(Exception):  # pylint: disable=too-few-public-methods
         0xB106: MagicParsingError,
         0xB107: DisplaySystemFeeFailError,
         0xB108: DisplayNetworkFeeFailError,
+        0xB109: DisplayTotalFeeFailError,
         0xB200: ConvertToAddressFailError
     }
 

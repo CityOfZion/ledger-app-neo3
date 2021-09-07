@@ -39,6 +39,7 @@
 static action_validate_cb g_validate_callback;
 static char g_system_fee[30];
 static char g_network_fee[30];
+static char g_total_fees[30];
 static char g_network[11];            // Target network the tx in tended for
                                       // ("MainNet", "TestNet" or uint32 network number for private nets)
 static char g_valid_until_block[11];  // uint32 (=max 10 chars) + \0
@@ -147,6 +148,13 @@ UX_STEP_NOCB(ux_display_networkfee_step,
                  .text = g_network_fee,
              });
 
+UX_STEP_NOCB(ux_display_total_fee,
+             bnnn_paging,
+             {
+                 .title = "Total fees",
+                 .text = g_total_fees,
+             });
+
 UX_STEP_NOCB(ux_display_validuntilblock_step,
              bnnn_paging,
              {
@@ -180,6 +188,7 @@ UX_FLOW(ux_display_transaction_flow,
         &ux_display_network_step,
         &ux_display_systemfee_step,
         &ux_display_networkfee_step,
+        &ux_display_total_fee,
         &ux_display_validuntilblock_step,
         &ux_upper_delimiter,  // special step that won't be shown, but used for runtime displaying
                               // dynamics screens when applicable
@@ -231,6 +240,14 @@ int ui_display_transaction() {
     }
     snprintf(g_network_fee, sizeof(g_network_fee), "GAS %.*s", sizeof(network_fee), network_fee);
     PRINTF("Network fee: %s GAS\n", network_fee);
+
+    memset(g_total_fees, 0, sizeof(g_total_fees));
+    char total_fee[30] = {0};
+    // Note that network_fee and system_fee are actually int64 and can't be less than 0 (as guarded by transaction_deserialize())
+    if (!format_fpu64(total_fee, sizeof(total_fee), (uint64_t) G_context.tx_info.transaction.network_fee + G_context.tx_info.transaction.system_fee, 8)) {
+        return io_send_sw(SW_DISPLAY_TOTAL_FEE_FAIL);
+    }
+    snprintf(g_total_fees, sizeof(g_total_fees), "GAS %.*s", sizeof(total_fee), total_fee);
 
     snprintf(g_valid_until_block, sizeof(g_valid_until_block), "%d", G_context.tx_info.transaction.valid_until_block);
     PRINTF("Valid until: %s\n", g_valid_until_block);
