@@ -28,6 +28,7 @@ class DeviceException(Exception):  # pylint: disable=too-few-public-methods
         0xB107: DisplaySystemFeeFailError,
         0xB108: DisplayNetworkFeeFailError,
         0xB109: DisplayTotalFeeFailError,
+        0xB10A: DisplayTransferAmountError,
         0xB200: ConvertToAddressFailError
     }
 

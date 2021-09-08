@@ -88,10 +88,16 @@
 #define SW_DISPLAY_NETWORK_FEE_FAIL 0xb108
 
 /**
- * Status word for failing to parse the total fees (network + system) 
+ * Status word for failing to parse the total fees (network + system)
  * into a format that can be displayed on the device
  */
 #define SW_DISPLAY_TOTAL_FEE_FAIL 0xb109
+
+/**
+ * Status word for failing to parse token amount (GAS or NEO)
+ * into a format that can be displayed on the device
+ */
+#define SW_DISPLAY_TOKEN_TRANSFER_AMOUNT_FAIL 0xb10A
 
 /**
  * Status word for failing to convert public key to NEO address

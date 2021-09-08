@@ -97,6 +97,12 @@ class BoilerplateCommand:
             if is_last:
                 # Review Transaction
                 button.right_click()
+                # Destination address
+                button.right_click()
+                button.right_click()
+                button.right_click()
+                # Token Amount
+                button.right_click()
                 # Target network
                 button.right_click()
                 # System fee
