@@ -7,6 +7,7 @@ from ecdsa.util import sigdecode_der
 
 from neo3.network import node, payloads
 from neo3.core import types, serialization
+from neo3 import contracts, wallet, vm
 
 
 def test_sign_tx(cmd, button):
@@ -36,6 +37,15 @@ def test_sign_tx(cmd, button):
                              scope=payloads.WitnessScope.CALLED_BY_ENTRY)
     witness = payloads.Witness(invocation_script=b'', verification_script=b'\x55')
     magic = 860833102
+
+    # build a NEO transfer script
+    from_account = wallet.Account.address_to_script_hash("NSiVJYZej4XsxG5CUpdwn7VRQk8iiiDMPM").to_array()
+    to_account = wallet.Account.address_to_script_hash("NU5unwNcWLqPM21cNCRP1LPuhxsTpYvNTf").to_array()
+    amount = 11 * contracts.NeoToken().factor
+    data = None
+    sb = vm.ScriptBuilder()
+    sb.emit_dynamic_call_with_args(contracts.NeoToken().hash, "transfer", [from_account, to_account, amount, data])
+
     tx = payloads.Transaction(version=0,
                               nonce=123,
                               system_fee=456,
@@ -43,7 +53,7 @@ def test_sign_tx(cmd, button):
                               valid_until_block=1,
                               attributes=[],
                               signers=[signer],
-                              script=b'\x01\x02',
+                              script=sb.to_array(),
                               witnesses=[witness])
 
     der_sig = cmd.sign_tx(bip44_path=bip44_path,

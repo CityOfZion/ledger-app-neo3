@@ -16,6 +16,8 @@
  */
 uint16_t read_u16_be(const uint8_t *ptr, size_t offset);
 
+int16_t read_s16_be(const uint8_t *ptr, size_t offset);
+
 /**
  * Read 4 bytes as Big Endian from byte buffer.
  *
@@ -28,6 +30,8 @@ uint16_t read_u16_be(const uint8_t *ptr, size_t offset);
  *
  */
 uint32_t read_u32_be(const uint8_t *ptr, size_t offset);
+
+int32_t read_s32_be(const uint8_t *ptr, size_t offset);
 
 /**
  * Read 8 bytes as Big Endian from byte buffer.
@@ -68,6 +72,8 @@ int64_t read_s64_be(const uint8_t *ptr, size_t offset);
  */
 uint16_t read_u16_le(const uint8_t *ptr, size_t offset);
 
+int16_t read_s16_le(const uint8_t *ptr, size_t offset);
+
 /**
  * Read 4 bytes as Little Endian from byte buffer.
  *
@@ -80,6 +86,8 @@ uint16_t read_u16_le(const uint8_t *ptr, size_t offset);
  *
  */
 uint32_t read_u32_le(const uint8_t *ptr, size_t offset);
+
+int32_t read_s32_le(const uint8_t *ptr, size_t offset);
 
 /**
  * Read 8 bytes as Little Endian from byte buffer.

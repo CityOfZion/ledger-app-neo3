@@ -20,7 +20,7 @@
 #define ADDRESS_BASE58_LEN 34
 
 /** length of a Address before encoding, which is the length of <address_version>+<script_hash>+<checksum> */
-#define ADDRESS_LEN (1 + SCRIPT_HASH_LEN + SCRIPT_HASH_CHECKSUM_LEN)
+#define ADDRESS_LEN_PRE (1 + SCRIPT_HASH_LEN + SCRIPT_HASH_CHECKSUM_LEN)
 
 /**
  * Length of a standard single account verification script
@@ -66,7 +66,7 @@ void script_hash_to_address(char* out, size_t out_len, const unsigned char* scri
     static cx_sha256_t data_hash;
     unsigned char data_hash_1[SHA256_HASH_LEN];
     unsigned char data_hash_2[SHA256_HASH_LEN];
-    unsigned char address[ADDRESS_LEN];
+    unsigned char address[ADDRESS_LEN_PRE];
 
     address[0] = ADDRESS_VERSION;
     os_memmove(&address[1], script_hash, UINT160_LEN);
@@ -84,7 +84,7 @@ void script_hash_to_address(char* out, size_t out_len, const unsigned char* scri
     base58_encode(address, sizeof(address), out, out_len);
 }
 
-bool address_from_pubkey(const uint8_t public_key[static 64], uint8_t* out, size_t out_len) {
+bool address_from_pubkey(uint8_t public_key[static 64], uint8_t* out, size_t out_len) {
     // we need to go through 3 steps
     // 1. create a verification script with the public key
     // 2. create a script hash of the verification script (using sha256 + ripemd160)

@@ -39,6 +39,7 @@
 static action_validate_cb g_validate_callback;
 static char g_system_fee[30];
 static char g_network_fee[30];
+static char g_total_fees[30];
 static char g_network[11];            // Target network the tx in tended for
                                       // ("MainNet", "TestNet" or uint32 network number for private nets)
 static char g_valid_until_block[11];  // uint32 (=max 10 chars) + \0
@@ -57,6 +58,7 @@ UX_STEP_NOCB(ux_display_address_step,
                  .title = "Address",
                  .text = g_address,
              });
+
 // Step with approve button
 UX_STEP_CB(ux_display_approve_step,
            pb,
@@ -126,6 +128,20 @@ UX_STEP_NOCB(ux_display_review_step,
                  "Transaction",
              });
 
+UX_STEP_NOCB(ux_display_dst_address_step,
+             bnnn_paging,
+             {
+                 .title = "Destination addr",
+                 .text = g_address,
+             });
+
+UX_STEP_NOCB(ux_display_token_amount_step,
+             bnnn_paging,
+             {
+                 .title = "Token amount",
+                 .text = g_text,
+             });
+
 UX_STEP_NOCB(ux_display_systemfee_step,
              bnnn_paging,
              {
@@ -147,12 +163,34 @@ UX_STEP_NOCB(ux_display_networkfee_step,
                  .text = g_network_fee,
              });
 
+UX_STEP_NOCB(ux_display_total_fee,
+             bnnn_paging,
+             {
+                 .title = "Total fees",
+                 .text = g_total_fees,
+             });
+
 UX_STEP_NOCB(ux_display_validuntilblock_step,
              bnnn_paging,
              {
                  .title = "Valid until height",
                  .text = g_valid_until_block,
              });
+
+UX_STEP_NOCB(ux_display_no_arbitrary_script_step,
+             bnnn_paging,
+             {
+                 .title = "Error",
+                 .text = "Only NEO or GAS transfer scripts are supported.",
+             });
+
+UX_STEP_CB(ux_display_abort_step,
+           pb,
+           (*g_validate_callback)(false),
+           {
+               &C_icon_validate_14,
+               "Understood, abort..",
+           });
 
 // 3 special steps for runtime dynamic screen generation, used to display attached signers and their properties
 UX_STEP_INIT(ux_upper_delimiter, NULL, NULL, { display_next_state(true); });
@@ -166,29 +204,6 @@ UX_STEP_NOCB(ux_display_generic,
 
 UX_STEP_INIT(ux_lower_delimiter, NULL, NULL, { display_next_state(false); });
 
-// FLOW to display transaction information:
-// #1 screen : eye icon + "Review Transaction"
-// #2 screen : display target network
-// #3 screen : display system fee
-// #4 screen : display network fee
-// #5 screen : display max block height validity
-// #n screen : display properties of attached signers
-// #n+1 screen : approve button
-// #n+2 screen : reject button
-UX_FLOW(ux_display_transaction_flow,
-        &ux_display_review_step,
-        &ux_display_network_step,
-        &ux_display_systemfee_step,
-        &ux_display_networkfee_step,
-        &ux_display_validuntilblock_step,
-        &ux_upper_delimiter,  // special step that won't be shown, but used for runtime displaying
-                              // dynamics screens when applicable
-        &ux_display_generic,  // will be used to dynamically display Signers
-        &ux_lower_delimiter,  // special step that won't be shown, but used for runtime displaying
-                              // dynamics screens when applicable
-        &ux_display_approve_step,
-        &ux_display_reject_step);
-
 void reset_signer_display_state() {
     display_ctx.current_state = STATIC_SCREEN;
     display_ctx.s_index = 0;
@@ -197,10 +212,70 @@ void reset_signer_display_state() {
     display_ctx.p_index = 0;
 }
 
+#define MAX_NUM_STEPS 13
+const ux_flow_step_t *ux_display_transaction_flow[MAX_NUM_STEPS + 1];
+
+void create_transaction_flow() {
+    uint8_t index = 0;
+    if (!G_context.tx_info.transaction.is_system_asset_transfer) {
+        // We currently do not support transaction scripts that are not NEO or GAS transfers
+        // will be added later
+        ux_display_transaction_flow[index++] = &ux_display_no_arbitrary_script_step;
+        ux_display_transaction_flow[index++] = &ux_display_abort_step;
+        ux_display_transaction_flow[index++] = FLOW_END_STEP;
+        return;
+    }
+
+    ux_display_transaction_flow[index++] = &ux_display_review_step;
+
+    ux_display_transaction_flow[index++] = &ux_display_dst_address_step;
+    ux_display_transaction_flow[index++] = &ux_display_token_amount_step;
+
+    ux_display_transaction_flow[index++] = &ux_display_network_step;
+    ux_display_transaction_flow[index++] = &ux_display_systemfee_step;
+    ux_display_transaction_flow[index++] = &ux_display_networkfee_step;
+    ux_display_transaction_flow[index++] = &ux_display_total_fee;
+    ux_display_transaction_flow[index++] = &ux_display_validuntilblock_step;
+
+    // special step that won't be shown, but used for runtime displaying
+    // dynamics screens when applicable
+    ux_display_transaction_flow[index++] = &ux_upper_delimiter;
+    // will be used to dynamically display Signers
+    ux_display_transaction_flow[index++] = &ux_display_generic;
+    // special step that won't be shown, but used for runtime displaying
+    // dynamics screens when applicable
+    ux_display_transaction_flow[index++] = &ux_lower_delimiter;
+
+    ux_display_transaction_flow[index++] = &ux_display_approve_step;
+    ux_display_transaction_flow[index++] = &ux_display_reject_step;
+    ux_display_transaction_flow[index++] = FLOW_END_STEP;
+}
+
 int ui_display_transaction() {
     if (G_context.req_type != CONFIRM_TRANSACTION || G_context.state != STATE_PARSED) {
         G_context.state = STATE_NONE;
         return io_send_sw(SW_BAD_STATE);
+    }
+
+    if (G_context.tx_info.transaction.is_system_asset_transfer) {
+        memset(g_address, 0, sizeof(g_address));
+        snprintf(g_address, sizeof(g_address), "%s", G_context.tx_info.transaction.dst_address);
+        PRINTF("Destination address: %s\n", g_address);
+
+        memset(g_text, 0, sizeof(g_text));
+        char token_amount[30] = {0};
+        if (!format_fpu64(token_amount,
+                          sizeof(token_amount),
+                          (uint64_t) G_context.tx_info.transaction.amount,
+                          G_context.tx_info.transaction.is_neo ? 0 : 8)) {
+            return io_send_sw(SW_DISPLAY_TOKEN_TRANSFER_AMOUNT_FAIL);
+        }
+        snprintf(g_text,
+                 sizeof(g_text),
+                 "%s %.*s",
+                 G_context.tx_info.transaction.is_neo ? "NEO" : "GAS",
+                 sizeof(token_amount),
+                 token_amount);
     }
 
     // We'll try to give more user friendly names for known networks
@@ -232,11 +307,26 @@ int ui_display_transaction() {
     snprintf(g_network_fee, sizeof(g_network_fee), "GAS %.*s", sizeof(network_fee), network_fee);
     PRINTF("Network fee: %s GAS\n", network_fee);
 
+    memset(g_total_fees, 0, sizeof(g_total_fees));
+    char total_fee[30] = {0};
+    // Note that network_fee and system_fee are actually int64 and can't be less than 0 (as guarded by
+    // transaction_deserialize())
+    if (!format_fpu64(total_fee,
+                      sizeof(total_fee),
+                      (uint64_t) G_context.tx_info.transaction.network_fee + G_context.tx_info.transaction.system_fee,
+                      8)) {
+        return io_send_sw(SW_DISPLAY_TOTAL_FEE_FAIL);
+    }
+    snprintf(g_total_fees, sizeof(g_total_fees), "GAS %.*s", sizeof(total_fee), total_fee);
+
     snprintf(g_valid_until_block, sizeof(g_valid_until_block), "%d", G_context.tx_info.transaction.valid_until_block);
     PRINTF("Valid until: %s\n", g_valid_until_block);
 
     g_validate_callback = &ui_action_validate_transaction;
     reset_signer_display_state();
+
+    // start display
+    create_transaction_flow();
     ux_flow_init(0, ux_display_transaction_flow, NULL);
 
     return 0;

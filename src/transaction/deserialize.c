@@ -20,6 +20,7 @@
 #include "constants.h"
 #include "../common/buffer.h"
 #include "stdlib.h"
+#include "tx_utils.h"
 
 parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     if (buf->size > MAX_TRANSACTION_LEN) {
@@ -169,6 +170,10 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
         return SCRIPT_LENGTH_VALUE_ERROR;
     }
     tx->script_size = (uint16_t) script_length;
+
+    // test if script is NEO or GAS transfer
+    buffer_t scriptBuf = {.ptr = tx->script, .size = script_length, .offset = 0};
+    try_parse_transfer_script(&scriptBuf, tx);
 
     return (buf->offset == buf->size) ? PARSING_OK : INVALID_LENGTH_ERROR;
 }

@@ -11,6 +11,7 @@ from ledgerblue.commTCP import getDongle
 from ledgerblue.comm import getDongle as usb_getDongle
 from neo3.core import cryptography, types, serialization
 from neo3.network import payloads
+from neo3 import wallet, contracts, vm
 
 
 class INS(enum.IntEnum):
@@ -19,11 +20,14 @@ class INS(enum.IntEnum):
     SIGN_TX = 0x02  # sign transaction with BIP44 path and return signature
     GET_PUBLIC_KEY = 0x04  # public key of corresponding BIP44 path and return uncompressed public key
 
-
 P2_MORE = 0x80  # specific for SIGN_TX instruction
 P2_LAST = 0x00  # specific for SIGN_TX instruction
 
-BIP44 = bytes.fromhex("8000002C80000378800000000000000000000000")
+BIP44 = bytes.fromhex("8000002C"
+                      "80000378"
+                      "80000001"
+                      "00000000"
+                      "00000000")
 NETWORK_MAGIC = struct.pack("I", 860833102)
 
 
@@ -49,8 +53,8 @@ def get_app_version(conn) -> str:
     return "%d.%d.%d" % struct.unpack("BBB", result)
 
 
-def get_public_key(conn) -> cryptography.ECPoint:
-    result = conn.exchange(apdu(INS.GET_PUBLIC_KEY, p1=0, p2=0, cdata=BIP44))
+def get_public_key(conn, showOnDevice: bool = True) -> cryptography.ECPoint:
+    result = conn.exchange(apdu(INS.GET_PUBLIC_KEY, p1=0, p2=int(showOnDevice), cdata=BIP44))
     return cryptography.ECPoint(bytes(result), cryptography.ECCCurve.SECP256R1, validate=True)
 
 
@@ -62,8 +66,8 @@ def sign_tx(conn, tx_unsigned_data: bytes) -> str:
 
 
 def main():
-    conn = getDongle('127.0.0.1', 9999, debug=True)  # Use this when testing via the Speculos emulator
-    # conn = usb_getDongle(debug=True)  # Use this when testing on physical device
+    # conn = getDongle('127.0.0.1', 9999, debug=True)  # Use this when testing via the Speculos emulator
+    conn = usb_getDongle(debug=True)  # Use this when testing on physical device
 
     print(f"App name: {get_app_name(conn)}")
     print(f"App version: {get_app_version(conn)}")
@@ -72,7 +76,32 @@ def main():
     # Create a TX to be signed
     signer = payloads.Signer(account=types.UInt160.from_string("d7678dd97c000be3f33e9362e673101bac4ca654"),
                              scope=payloads.WitnessScope.CALLED_BY_ENTRY)
+    # build a NEO transfer script
+    from_account = wallet.Account.address_to_script_hash("NSiVJYZej4XsxG5CUpdwn7VRQk8iiiDMPM").to_array()
+    to_account = wallet.Account.address_to_script_hash("NU5unwNcWLqPM21cNCRP1LPuhxsTpYvNTf").to_array()
+    amount = 11 * contracts.NeoToken().factor
+    data = None
+    sb = vm.ScriptBuilder()
+    sb.emit_dynamic_call_with_args(contracts.NeoToken().hash, "transfer", [from_account, to_account, amount, data])
+
     tx = payloads.Transaction(version=0,
+                              nonce=123,
+                              system_fee=456,
+                              network_fee=789,
+                              valid_until_block=1,
+                              attributes=[],
+                              signers=[signer],
+                              script=sb.to_array(),
+                              witnesses=[])
+
+    with serialization.BinaryWriter() as br:
+        tx.serialize_unsigned(br)
+        tx_unsigned_raw = br.to_array()
+
+    # Requires confirmation by the user
+    print(f"Signature: {sign_tx(conn, tx_unsigned_raw)}")
+
+    invalid_tx = payloads.Transaction(version=0,
                               nonce=123,
                               system_fee=456,
                               network_fee=789,
@@ -83,11 +112,11 @@ def main():
                               witnesses=[])
 
     with serialization.BinaryWriter() as br:
-        tx.serialize_unsigned(br)
-        tx_unsigned_raw = br.to_array()
+        invalid_tx.serialize_unsigned(br)
+        invalid_tx_unsigned_raw = br.to_array()
 
-    # Requires confirmation by the user
-    print(f"Signature: {sign_tx(conn, tx_unsigned_raw)}")
+    # sign TX with a script that is not a NEO or GAS transfer will fail.
+    sign_tx(conn, invalid_tx_unsigned_raw)
 
     conn.close()
 
