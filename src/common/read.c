@@ -22,6 +22,11 @@ uint16_t read_u16_be(const uint8_t *ptr, size_t offset) {
            (uint16_t) ptr[offset + 1] << 0;
 }
 
+int16_t read_s16_be(const uint8_t *ptr, size_t offset) {
+    return (int16_t) ptr[offset + 0] << 8 |  //
+           (int16_t) ptr[offset + 1] << 0;
+}
+
 uint32_t read_u32_be(const uint8_t *ptr, size_t offset) {
     return (uint32_t) ptr[offset + 0] << 24 |  //
            (uint32_t) ptr[offset + 1] << 16 |  //
@@ -29,15 +34,11 @@ uint32_t read_u32_be(const uint8_t *ptr, size_t offset) {
            (uint32_t) ptr[offset + 3] << 0;
 }
 
-int64_t read_s64_be(const uint8_t *ptr, size_t offset) {
-    return (int64_t) ptr[offset + 0] << 56 |  //
-           (int64_t) ptr[offset + 1] << 48 |  //
-           (int64_t) ptr[offset + 2] << 40 |  //
-           (int64_t) ptr[offset + 3] << 32 |  //
-           (int64_t) ptr[offset + 4] << 24 |  //
-           (int64_t) ptr[offset + 5] << 16 |  //
-           (int64_t) ptr[offset + 6] << 8 |   //
-           (int64_t) ptr[offset + 7] << 0;
+int32_t read_s32_be(const uint8_t *ptr, size_t offset) {
+    return (int32_t) ptr[offset + 0] << 24 |  //
+           (int32_t) ptr[offset + 1] << 16 |  //
+           (int32_t) ptr[offset + 2] << 8 |   //
+           (int32_t) ptr[offset + 3] << 0;
 }
 
 uint64_t read_u64_be(const uint8_t *ptr, size_t offset) {
@@ -51,9 +52,25 @@ uint64_t read_u64_be(const uint8_t *ptr, size_t offset) {
            (uint64_t) ptr[offset + 7] << 0;
 }
 
+int64_t read_s64_be(const uint8_t *ptr, size_t offset) {
+    return (int64_t) ptr[offset + 0] << 56 |  //
+           (int64_t) ptr[offset + 1] << 48 |  //
+           (int64_t) ptr[offset + 2] << 40 |  //
+           (int64_t) ptr[offset + 3] << 32 |  //
+           (int64_t) ptr[offset + 4] << 24 |  //
+           (int64_t) ptr[offset + 5] << 16 |  //
+           (int64_t) ptr[offset + 6] << 8 |   //
+           (int64_t) ptr[offset + 7] << 0;
+}
+
 uint16_t read_u16_le(const uint8_t *ptr, size_t offset) {
     return (uint16_t) ptr[offset + 0] << 0 |  //
            (uint16_t) ptr[offset + 1] << 8;
+}
+
+int16_t read_s16_le(const uint8_t *ptr, size_t offset) {
+    return (int16_t) ptr[offset + 0] << 0 |  //
+           (int16_t) ptr[offset + 1] << 8;
 }
 
 uint32_t read_u32_le(const uint8_t *ptr, size_t offset) {
@@ -61,6 +78,13 @@ uint32_t read_u32_le(const uint8_t *ptr, size_t offset) {
            (uint32_t) ptr[offset + 1] << 8 |   //
            (uint32_t) ptr[offset + 2] << 16 |  //
            (uint32_t) ptr[offset + 3] << 24;
+}
+
+int32_t read_s32_le(const uint8_t *ptr, size_t offset) {
+    return (int32_t) ptr[offset + 0] << 0 |   //
+           (int32_t) ptr[offset + 1] << 8 |   //
+           (int32_t) ptr[offset + 2] << 16 |  //
+           (int32_t) ptr[offset + 3] << 24;
 }
 
 uint64_t read_u64_le(const uint8_t *ptr, size_t offset) {

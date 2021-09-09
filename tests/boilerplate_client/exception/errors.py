@@ -94,5 +94,13 @@ class DisplayNetworkFeeFailError(Exception):
     pass
 
 
+class DisplayTotalFeeFailError(Exception):
+    pass
+
+
+class DisplayTransferAmountError(Exception):
+    pass
+
+
 class ConvertToAddressFailError(Exception):
     pass

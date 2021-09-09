@@ -71,6 +71,19 @@ bool buffer_read_u8(buffer_t *buffer, uint8_t *value) {
     return true;
 }
 
+bool buffer_read_s8(buffer_t *buffer, int8_t *value) {
+    if (!buffer_can_read(buffer, 1)) {
+        *value = 0;
+
+        return false;
+    }
+
+    *value = (int8_t) buffer->ptr[buffer->offset];
+    buffer_seek_cur(buffer, 1);
+
+    return true;
+}
+
 bool buffer_read_u16(buffer_t *buffer, uint16_t *value, endianness_t endianness) {
     if (!buffer_can_read(buffer, 2)) {
         *value = 0;
@@ -85,6 +98,20 @@ bool buffer_read_u16(buffer_t *buffer, uint16_t *value, endianness_t endianness)
     return true;
 }
 
+bool buffer_read_s16(buffer_t *buffer, int16_t *value, endianness_t endianness) {
+    if (!buffer_can_read(buffer, 2)) {
+        *value = 0;
+
+        return false;
+    }
+
+    *value = ((endianness == BE) ? read_s16_be(buffer->ptr, buffer->offset) : read_s16_le(buffer->ptr, buffer->offset));
+
+    buffer_seek_cur(buffer, 2);
+
+    return true;
+}
+
 bool buffer_read_u32(buffer_t *buffer, uint32_t *value, endianness_t endianness) {
     if (!buffer_can_read(buffer, 4)) {
         *value = 0;
@@ -93,6 +120,20 @@ bool buffer_read_u32(buffer_t *buffer, uint32_t *value, endianness_t endianness)
     }
 
     *value = ((endianness == BE) ? read_u32_be(buffer->ptr, buffer->offset) : read_u32_le(buffer->ptr, buffer->offset));
+
+    buffer_seek_cur(buffer, 4);
+
+    return true;
+}
+
+bool buffer_read_s32(buffer_t *buffer, int32_t *value, endianness_t endianness) {
+    if (!buffer_can_read(buffer, 4)) {
+        *value = 0;
+
+        return false;
+    }
+
+    *value = ((endianness == BE) ? read_s32_be(buffer->ptr, buffer->offset) : read_s32_le(buffer->ptr, buffer->offset));
 
     buffer_seek_cur(buffer, 4);
 

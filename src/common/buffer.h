@@ -86,6 +86,8 @@ bool buffer_seek_end(buffer_t *buffer, size_t offset);
  */
 bool buffer_read_u8(buffer_t *buffer, uint8_t *value);
 
+bool buffer_read_s8(buffer_t *buffer, int8_t *value);
+
 /**
  * Read 2 bytes from buffer into uint16_t.
  *
@@ -101,6 +103,8 @@ bool buffer_read_u8(buffer_t *buffer, uint8_t *value);
  */
 bool buffer_read_u16(buffer_t *buffer, uint16_t *value, endianness_t endianness);
 
+bool buffer_read_s16(buffer_t *buffer, int16_t *value, endianness_t endianness);
+
 /**
  * Read 4 bytes from buffer into uint32_t.
  *
@@ -115,6 +119,8 @@ bool buffer_read_u16(buffer_t *buffer, uint16_t *value, endianness_t endianness)
  *
  */
 bool buffer_read_u32(buffer_t *buffer, uint32_t *value, endianness_t endianness);
+
+bool buffer_read_s32(buffer_t *buffer, int32_t *value, endianness_t endianness);
 
 /**
  * Read 8 bytes from buffer into uint64_t.
