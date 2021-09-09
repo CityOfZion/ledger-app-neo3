@@ -34,9 +34,9 @@ APPVERSION_P = 1
 APPVERSION   = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
 
 ifeq ($(TARGET_NAME),TARGET_NANOX)
-    ICONNAME=icons/badge_neo.gif
+    ICONNAME=icons/nanox_app_neo.gif
 else
-    ICONNAME=icons/badge_neo.gif
+    ICONNAME=icons/nanos_app_neo.gif
 endif
 
 all: default
