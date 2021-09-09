@@ -35,6 +35,7 @@
 #include "../transaction/types.h"
 #include "../common/format.h"
 #include "utils.h"
+#include "../shared_context.h"
 
 static action_validate_cb g_validate_callback;
 static char g_system_fee[30];
@@ -177,12 +178,13 @@ UX_STEP_NOCB(ux_display_validuntilblock_step,
                  .text = g_valid_until_block,
              });
 
-UX_STEP_NOCB(ux_display_no_arbitrary_script_step,
-             bnnn_paging,
-             {
-                 .title = "Error",
-                 .text = "Only NEO or GAS transfer scripts are supported.",
-             });
+UX_STEP_NOCB(
+    ux_display_no_arbitrary_script_step,
+    bnnn_paging,
+    {
+        .title = "Error",
+        .text = "Arbitrary contract scripts are not allowed. Go to Settings to enable signing of such transactions",
+    });
 
 UX_STEP_CB(ux_display_abort_step,
            pb,
@@ -217,9 +219,7 @@ const ux_flow_step_t *ux_display_transaction_flow[MAX_NUM_STEPS + 1];
 
 void create_transaction_flow() {
     uint8_t index = 0;
-    if (!G_context.tx_info.transaction.is_system_asset_transfer) {
-        // We currently do not support transaction scripts that are not NEO or GAS transfers
-        // will be added later
+    if (!G_context.tx_info.transaction.is_system_asset_transfer && !N_storage.scriptsAllowed) {
         ux_display_transaction_flow[index++] = &ux_display_no_arbitrary_script_step;
         ux_display_transaction_flow[index++] = &ux_display_abort_step;
         ux_display_transaction_flow[index++] = FLOW_END_STEP;
@@ -228,8 +228,10 @@ void create_transaction_flow() {
 
     ux_display_transaction_flow[index++] = &ux_display_review_step;
 
-    ux_display_transaction_flow[index++] = &ux_display_dst_address_step;
-    ux_display_transaction_flow[index++] = &ux_display_token_amount_step;
+    if (G_context.tx_info.transaction.is_system_asset_transfer) {
+        ux_display_transaction_flow[index++] = &ux_display_dst_address_step;
+        ux_display_transaction_flow[index++] = &ux_display_token_amount_step;
+    }
 
     ux_display_transaction_flow[index++] = &ux_display_network_step;
     ux_display_transaction_flow[index++] = &ux_display_systemfee_step;

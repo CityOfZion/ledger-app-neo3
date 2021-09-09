@@ -21,6 +21,7 @@
 #include "os.h"
 #include "ux.h"
 
+#include "shared_context.h"
 #include "types.h"
 #include "globals.h"
 #include "io.h"
@@ -34,6 +35,9 @@ io_state_e G_io_state;
 ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
 global_ctx_t G_context;
+
+settings_strings_t strings;
+const internalStorage_t N_storage_real;
 
 /**
  * Handle APDU command received and send back APDU response using handlers.
