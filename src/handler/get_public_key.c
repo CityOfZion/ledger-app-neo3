@@ -37,7 +37,8 @@
 
 int handler_get_public_key(buffer_t *cdata, bool show_on_screen) {
     explicit_bzero(&G_context, sizeof(G_context));
-    G_context.state = CONFIRM_ADDRESS;
+    G_context.req_type = CONFIRM_ADDRESS;
+    G_context.state = STATE_NONE;
 
     uint16_t status;
     if (!buffer_read_and_validate_bip44(cdata, G_context.bip44_path, &status)) return io_send_sw(status);
