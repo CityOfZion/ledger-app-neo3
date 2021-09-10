@@ -16,9 +16,6 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#pragma GCC diagnostic ignored "-Wformat-invalid-specifier"  // snprintf
-#pragma GCC diagnostic ignored "-Wformat-extra-args"         // snprintf
-
 #include <stdbool.h>  // bool
 #include <string.h>   // memset
 
@@ -488,7 +485,7 @@ bool get_next_data(enum e_direction direction) {
         }
         case ACCOUNT: {
             snprintf(g_title, sizeof(g_title), "Account");
-            snprintf(g_text, sizeof(g_text), "%.*H", 20, s.account);
+            format_hex(s.account, 20, g_text, sizeof(g_text));
             return true;
         }
         case SCOPE: {
@@ -500,13 +497,13 @@ bool get_next_data(enum e_direction direction) {
         case CONTRACTS: {
             s = G_context.tx_info.transaction.signers[display_ctx.s_index];
             snprintf(g_title, sizeof(g_title), "Contract %d of %d", display_ctx.c_index + 1, s.allowed_contracts_size);
-            snprintf(g_text, sizeof(g_text), "%.*H", UINT160_LEN, s.allowed_contracts[display_ctx.c_index]);
+            format_hex(s.allowed_contracts[display_ctx.c_index], UINT160_LEN, g_text, sizeof(g_text));
             return true;
         }
         case GROUPS: {
             s = G_context.tx_info.transaction.signers[display_ctx.s_index];
             snprintf(g_title, sizeof(g_title), "Group %d of %d", display_ctx.g_index + 1, s.allowed_groups_size);
-            snprintf(g_text, sizeof(g_text), "%.*H", ECPOINT_LEN, s.allowed_groups[display_ctx.g_index]);
+            format_hex(s.allowed_groups[display_ctx.g_index], ECPOINT_LEN, g_text, sizeof(g_text));
             return true;
         }
         case END: {
