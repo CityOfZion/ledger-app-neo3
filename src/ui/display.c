@@ -96,7 +96,7 @@ int ui_display_address() {
     }
 
     memset(g_address, 0, sizeof(g_address));
-    uint8_t address[ADDRESS_LEN] = {0};  // address in base58 check encoded format
+    char address[ADDRESS_LEN] = {0};  // address in base58 check encoded format
     if (!address_from_pubkey(G_context.raw_public_key, address, sizeof(address))) {
         return io_send_sw(SW_CONVERT_TO_ADDRESS_FAIL);
     }

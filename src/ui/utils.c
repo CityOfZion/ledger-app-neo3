@@ -4,6 +4,8 @@
 #include "types.h"
 #include "../common/base58.h"
 
+#include <string.h>
+
 /** the length of a SHA256 hash */
 #define SHA256_HASH_LEN 32
 
@@ -69,7 +71,7 @@ void script_hash_to_address(char* out, size_t out_len, const unsigned char* scri
     unsigned char address[ADDRESS_LEN_PRE];
 
     address[0] = ADDRESS_VERSION;
-    os_memmove(&address[1], script_hash, UINT160_LEN);
+    memcpy(&address[1], script_hash, UINT160_LEN);
 
     // do a sha256 hash of the address twice.
     cx_sha256_init(&data_hash);
@@ -84,7 +86,7 @@ void script_hash_to_address(char* out, size_t out_len, const unsigned char* scri
     base58_encode(address, sizeof(address), out, out_len);
 }
 
-bool address_from_pubkey(uint8_t public_key[static 64], uint8_t* out, size_t out_len) {
+bool address_from_pubkey(uint8_t public_key[static 64], char* out, size_t out_len) {
     // we need to go through 3 steps
     // 1. create a verification script with the public key
     // 2. create a script hash of the verification script (using sha256 + ripemd160)
