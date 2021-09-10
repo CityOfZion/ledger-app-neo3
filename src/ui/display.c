@@ -331,29 +331,33 @@ int ui_display_transaction() {
     return 0;
 }
 
+static void add_witness_scope_flag(char *dest, size_t len, const char *flag_name) {
+    if (strlen(dest) != 0) {
+        strlcat(dest, ",", len);
+    }
+    strlcat(dest, flag_name, len);
+}
+
 int parse_scope_name(witness_scope_e scope) {
-    size_t len = 0;
     if (scope == NONE) {
-        return snprintf(g_scope, sizeof(g_scope), "%s", "None");
+        strcpy(g_scope, "None");
+    } else if (scope == GLOBAL) {
+        strcpy(g_scope, "Global");
+    } else {
+        memset(g_scope, 0, sizeof(scope));
+        if (scope & CALLED_BY_ENTRY) {
+            add_witness_scope_flag(g_scope, sizeof(g_scope), "By Entry");
+        };
+
+        if (scope & CUSTOM_CONTRACTS) {
+            add_witness_scope_flag(g_scope, sizeof(g_scope), "Contracts");
+        };
+
+        if (scope & CUSTOM_GROUPS) {
+            add_witness_scope_flag(g_scope, sizeof(g_scope), "Groups");
+        }
     }
-
-    if (scope == GLOBAL) {
-        return snprintf(g_scope, sizeof(g_scope), "%s", "Global");
-    }
-
-    if (scope & CALLED_BY_ENTRY) {
-        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "By Entry,");
-    };
-
-    if (scope & CUSTOM_CONTRACTS) {
-        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "Contracts,");
-    };
-
-    if (scope & CUSTOM_GROUPS) {
-        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "Groups,");
-    };
-
-    return len - 1;  // take of the comma
+    return strlen(g_scope);
 }
 
 // This is a special function you must call for bnnn_paging to work properly in an edgecase.
