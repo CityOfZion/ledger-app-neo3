@@ -61,7 +61,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./unit-tests/coverage.info
           flags: unittests
-          name: codecov-app-boilerplate
+          name: codecov-app-neo3
           fail_ci_if_error: true
           verbose: true
       
@@ -72,8 +72,6 @@ jobs:
         with:
           name: documentation
           path: doc/html
-
-
 
   job_test:
     name: Test
@@ -112,4 +110,3 @@ jobs:
         with:
           name: speculos-log
           path: speculos.log
-
