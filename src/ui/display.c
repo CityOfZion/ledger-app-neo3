@@ -279,9 +279,9 @@ int ui_display_transaction() {
 
     // We'll try to give more user friendly names for known networks
     if (G_context.network_magic == NETWORK_MAINNET) {
-        snprintf(g_network, sizeof(g_network), "%s", "MainNet");
+        strcpy(g_network, "MainNet");
     } else if (G_context.network_magic == NETWORK_TESTNET) {
-        snprintf(g_network, sizeof(g_network), "%s", "TestNet");
+        strcpy(g_network, "TestNet");
     } else {
         snprintf(g_network, sizeof(g_network), "%d", G_context.network_magic);
     }
@@ -415,7 +415,7 @@ void next_prop() {
 
 void prev_prop() {
     uint8_t *idx = &display_ctx.p_index;
-    signer_t signer = G_context.tx_info.transaction.signers[display_ctx.s_index];
+    signer_t signer;
 
     // from first dynamic screen, go back to first static
     if (display_ctx.s_index == 0 && signer_property[*idx] == INDEX) {
@@ -482,18 +482,18 @@ bool get_next_data(enum e_direction direction) {
             return false;
         }
         case INDEX: {
-            snprintf(g_title, sizeof(g_title), "Signer");
+            strcpy(g_title, "Signer");
             uint8_t signers_size = G_context.tx_info.transaction.signers_size;
             snprintf(g_text, sizeof(g_text), "%d of %d", display_ctx.s_index + 1, signers_size);
             return true;
         }
         case ACCOUNT: {
-            snprintf(g_title, sizeof(g_title), "Account");
+            strcpy(g_title, "Account");
             format_hex(s.account, 20, g_text, sizeof(g_text));
             return true;
         }
         case SCOPE: {
-            snprintf(g_title, sizeof(g_title), "Scope");
+            strcpy(g_title, "Scope");
             int scope_size = parse_scope_name(s.scope);
             snprintf(g_text, sizeof(g_text), "%.*s", scope_size, g_scope);
             return true;
