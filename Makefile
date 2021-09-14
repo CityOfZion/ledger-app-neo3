@@ -31,10 +31,6 @@ endif
 APP_LOAD_PARAMS += --path "44'/888'"
 APP_LOAD_PARAMS += $(COMMON_LOAD_PARAMS)
 
-# Ledger: add the "Pending security review" disclaimer
-APP_LOAD_PARAMS += --tlvraw 9F:01
-DEFINES += HAVE_PENDING_REVIEW_SCREEN
-
 APPNAME      = "NEO N3"
 APPVERSION_M = 0
 APPVERSION_N = 1
