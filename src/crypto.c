@@ -16,7 +16,7 @@
  *****************************************************************************/
 
 #include <stdint.h>   // uint*_t
-#include <string.h>   // memset, explicit_bzero
+#include <string.h>   // memmove, memset, explicit_bzero
 #include <stdbool.h>  // bool
 
 #include "crypto.h"
@@ -51,7 +51,7 @@ int crypto_init_public_key(cx_ecfp_private_key_t *private_key,
     // generate corresponding public key
     cx_ecfp_generate_pair(CX_CURVE_256R1, public_key, private_key, 1);
 
-    memmove(raw_public_key, public_key->W + 1, 64);
+    memcpy(raw_public_key, public_key->W + 1, 64);
 
     return 0;
 }

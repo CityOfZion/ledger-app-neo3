@@ -17,7 +17,7 @@
 #include <stdint.h>   // uint*_t
 #include <stddef.h>   // size_t
 #include <stdbool.h>  // bool
-#include <string.h>   // memmove
+#include <string.h>   // memcpy
 
 #include "buffer.h"
 #include "read.h"
@@ -187,7 +187,7 @@ bool buffer_copy(const buffer_t *buffer, uint8_t *out, size_t out_len) {
         return false;
     }
 
-    memmove(out, buffer->ptr + buffer->offset, buffer->size - buffer->offset);
+    memcpy(out, buffer->ptr + buffer->offset, buffer->size - buffer->offset);
 
     return true;
 }

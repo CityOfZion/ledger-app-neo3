@@ -1,6 +1,8 @@
 #include "tx_utils.h"
 #include "../ui/utils.h"
 
+#include <string.h>
+
 typedef union {
     uint8_t u8;
     int8_t s8;
@@ -66,7 +68,7 @@ void try_parse_transfer_script(buffer_t *script, transaction_t *tx) {
 
     // we expect the above fixed sequence next
     if (!buffer_can_read(script, sizeof(sequence))) return;
-    if (os_secure_memcmp((uint8_t *) (script->ptr + script->offset), sequence, sizeof(sequence))) return;
+    if (memcmp(script->ptr + script->offset, sequence, sizeof(sequence))) return;
     buffer_seek_cur(script, sizeof(sequence));
 
     // read contract script hash
@@ -77,9 +79,9 @@ void try_parse_transfer_script(buffer_t *script, transaction_t *tx) {
                                  0xe3, 0x55, 0x61, 0x01, 0x13, 0x19, 0xf3, 0xcf, 0xa4, 0xd2};
 
     if (!buffer_can_read(script, UINT160_LEN)) return;
-    if (!os_secure_memcmp((uint8_t *) (script->ptr + script->offset), neo_script_hash, UINT160_LEN)) {
+    if (!memcmp(script->ptr + script->offset, neo_script_hash, UINT160_LEN)) {
         tx->is_neo = true;
-    } else if (os_secure_memcmp((uint8_t *) (script->ptr + script->offset), gas_script_hash, UINT160_LEN)) {
+    } else if (memcmp(script->ptr + script->offset, gas_script_hash, UINT160_LEN)) {
         // neither NEO or GAS, abort
         return;
     }
@@ -94,7 +96,7 @@ void try_parse_transfer_script(buffer_t *script, transaction_t *tx) {
     };
 
     if (!buffer_can_read(script, sizeof(sequence2))) return;
-    if (os_secure_memcmp((uint8_t *) (script->ptr + script->offset), sequence2, sizeof(sequence2)) != 0) return;
+    if (memcmp(script->ptr + script->offset, sequence2, sizeof(sequence2)) != 0) return;
     buffer_seek_cur(script, sizeof(sequence2));
 
     // make sure there is no extra code after the transfer script
