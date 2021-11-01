@@ -130,3 +130,48 @@ class BoilerplateCommand:
                 raise DeviceException(error_code=sw, ins=InsType.INS_SIGN_TX)
 
         return response
+
+    def sign_vote_tx(self, bip44_path: str, transaction: Transaction, network_magic: int, button: Button) -> Tuple[int, bytes]:
+        sw: int
+        response: bytes = b""
+
+        for is_last, chunk in self.builder.sign_tx(bip44_path=bip44_path,
+                                                   transaction=transaction,
+                                                   network_magic=network_magic):
+            self.transport.send_raw(chunk)
+
+            if is_last:
+                # Review Transaction
+                button.right_click()
+                # Vote to public key
+                button.right_click()
+                button.right_click()
+                button.right_click()
+                button.right_click()
+                # Target network
+                button.right_click()
+                # System fee
+                button.right_click()
+                # Network fee
+                button.right_click()
+                # Total fees
+                button.right_click()
+                # Valid until
+                button.right_click()
+                # Signer 1 of 1
+                button.right_click()
+                # Account 1/3, 2/3, 3/3
+                button.right_click()
+                button.right_click()
+                button.right_click()
+                # Scope
+                button.right_click()
+                # Approve
+                button.both_click()
+
+            sw, response = self.transport.recv()  # type: int, bytes
+
+            if sw != 0x9000:
+                raise DeviceException(error_code=sw, ins=InsType.INS_SIGN_TX)
+
+        return response

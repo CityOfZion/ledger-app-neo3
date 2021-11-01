@@ -38,6 +38,7 @@ static action_validate_cb g_validate_callback;
 static char g_system_fee[30];
 static char g_network_fee[30];
 static char g_total_fees[30];
+static char g_vote_to[67];            // 33 bytes public key + \0
 static char g_network[11];            // Target network the tx in tended for
                                       // ("MainNet", "TestNet" or uint32 network number for private nets)
 static char g_valid_until_block[11];  // uint32 (=max 10 chars) + \0
@@ -191,6 +192,15 @@ UX_STEP_CB(ux_display_abort_step,
                "Understood, abort..",
            });
 
+UX_STEP_NOCB(ux_display_vote_to_step,
+             bnnn_paging,
+             {
+                 .title = "Casting vote for",
+                 .text = g_vote_to,
+             });
+
+UX_STEP_NOCB(ux_display_vote_retract_step, nn, {"Retracting vote", ""});
+
 // 3 special steps for runtime dynamic screen generation, used to display attached signers and their properties
 UX_STEP_INIT(ux_upper_delimiter, NULL, NULL, { display_next_state(true); });
 
@@ -216,7 +226,8 @@ const ux_flow_step_t *ux_display_transaction_flow[MAX_NUM_STEPS + 1];
 
 void create_transaction_flow() {
     uint8_t index = 0;
-    if (!G_context.tx_info.transaction.is_system_asset_transfer && !N_storage.scriptsAllowed) {
+    if (!G_context.tx_info.transaction.is_system_asset_transfer && !G_context.tx_info.transaction.is_vote_script &&
+        !N_storage.scriptsAllowed) {
         ux_display_transaction_flow[index++] = &ux_display_no_arbitrary_script_step;
         ux_display_transaction_flow[index++] = &ux_display_abort_step;
         ux_display_transaction_flow[index++] = FLOW_END_STEP;
@@ -225,7 +236,13 @@ void create_transaction_flow() {
 
     ux_display_transaction_flow[index++] = &ux_display_review_step;
 
-    if (G_context.tx_info.transaction.is_system_asset_transfer) {
+    if (G_context.tx_info.transaction.is_vote_script) {
+        if (G_context.tx_info.transaction.is_remove_vote) {
+            ux_display_transaction_flow[index++] = &ux_display_vote_retract_step;
+        } else {
+            ux_display_transaction_flow[index++] = &ux_display_vote_to_step;
+        }
+    } else if (G_context.tx_info.transaction.is_system_asset_transfer) {
         ux_display_transaction_flow[index++] = &ux_display_dst_address_step;
         ux_display_transaction_flow[index++] = &ux_display_token_amount_step;
     }
@@ -275,6 +292,11 @@ int ui_display_transaction() {
                  G_context.tx_info.transaction.is_neo ? "NEO" : "GAS",
                  sizeof(token_amount),
                  token_amount);
+    }
+
+    if (G_context.tx_info.transaction.is_vote_script && !G_context.tx_info.transaction.is_remove_vote) {
+        memset(g_vote_to, 0, sizeof(g_vote_to));
+        format_hex(G_context.tx_info.transaction.vote_to, ECPOINT_LEN, g_vote_to, sizeof(g_vote_to));
     }
 
     // We'll try to give more user friendly names for known networks

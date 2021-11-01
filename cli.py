@@ -2,7 +2,7 @@
 Basic script show casing all commands
 
 Requirements:
-    pip install neo-mamba==0.9 ledgerblue
+    pip install neo-mamba==0.9.3 ledgerblue
 """
 
 import struct

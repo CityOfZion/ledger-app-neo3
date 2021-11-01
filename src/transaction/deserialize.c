@@ -175,6 +175,11 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     // test if script is NEO or GAS transfer
     buffer_t scriptBuf = {.ptr = tx->script, .size = script_length, .offset = 0};
     try_parse_transfer_script(&scriptBuf, tx);
+    if (!tx->is_system_asset_transfer) {
+        // reset offset to start script dissection from the start
+        scriptBuf.offset = 0;
+        try_parse_vote_script(&scriptBuf, tx);
+    }
 
     return (buf->offset == buf->size) ? PARSING_OK : INVALID_LENGTH_ERROR;
 }

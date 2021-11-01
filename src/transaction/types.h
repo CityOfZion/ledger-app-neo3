@@ -109,4 +109,7 @@ typedef struct {
     bool is_neo;                    // indicates if 'transfer' is called on the NEO contract. False means GAS contract
     int64_t amount;                 // transfer amount
     uint8_t dst_address[ADDRESS_LEN];
+    bool is_vote_script;
+    bool is_remove_vote;
+    uint8_t vote_to[ECPOINT_LEN];
 } transaction_t;
