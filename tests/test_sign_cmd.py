@@ -34,7 +34,11 @@ def test_sign_tx(cmd, button):
     )
 
     signer = payloads.Signer(account=types.UInt160.from_string("d7678dd97c000be3f33e9362e673101bac4ca654"),
-                             scope=payloads.WitnessScope.CALLED_BY_ENTRY)
+                             scope=payloads.WitnessScope.CUSTOM_CONTRACTS)
+
+    for i in range(1, 17):
+        signer.allowed_contracts.append(types.UInt160(20 * i.to_bytes(1, 'little')))
+
     witness = payloads.Witness(invocation_script=b'', verification_script=b'\x55')
     magic = 860833102
 
@@ -93,7 +97,7 @@ def test_sign_vote_script_tx(cmd, button):
     # build a NEO vote script
     from_account = wallet.Account.address_to_script_hash("NSiVJYZej4XsxG5CUpdwn7VRQk8iiiDMPM").to_array()
     vote_to = bytes.fromhex("03b209fd4f53a7170ea4444e0cb0a6bb6a53c2bd016926989cf85f9b0fba17a70c")
-    
+
     sb = vm.ScriptBuilder()
     sb.emit_dynamic_call_with_args(contracts.NeoToken().hash, "vote", [from_account, vote_to])
 
@@ -108,9 +112,9 @@ def test_sign_vote_script_tx(cmd, button):
                               witnesses=[witness])
 
     der_sig = cmd.sign_vote_tx(bip44_path=bip44_path,
-                          transaction=tx,
-                          network_magic=magic,
-                          button=button)
+                               transaction=tx,
+                               network_magic=magic,
+                               button=button)
 
     with serialization.BinaryWriter() as writer:
         tx.serialize_unsigned(writer)

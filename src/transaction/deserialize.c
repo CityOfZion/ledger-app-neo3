@@ -102,7 +102,7 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
             if (!buffer_read_varint(buf, &var_int_length)) {
                 return SIGNER_ALLOWED_CONTRACTS_LENGTH_PARSING_ERROR;
             }
-            if (var_int_length > MAX_SIGNER_SUB_ITEMS) {
+            if (var_int_length > MAX_SIGNER_ALLOWED_CONTRACTS) {
                 return SIGNER_ALLOWED_CONTRACTS_LENGTH_VALUE_ERROR;
             }
             tx->signers[i].allowed_contracts_size = var_int_length;
@@ -119,7 +119,7 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
             if (!buffer_read_varint(buf, &var_int_length)) {
                 return SIGNER_ALLOWED_GROUPS_LENGTH_PARSING_ERROR;
             }
-            if (var_int_length > MAX_SIGNER_SUB_ITEMS) {
+            if (var_int_length > MAX_SIGNER_ALLOWED_GROUPS) {
                 return SIGNER_ALLOWED_GROUPS_LENGTH_VALUE_ERROR;
             }
             tx->signers[i].allowed_groups_size = var_int_length;

@@ -7,6 +7,7 @@ from boilerplate_client.boilerplate_cmd_builder import BoilerplateCommandBuilder
 from boilerplate_client.button import Button
 from boilerplate_client.exception import DeviceException
 from boilerplate_client.transaction import Transaction
+from neo3.network import payloads
 
 
 class BoilerplateCommand:
@@ -85,7 +86,7 @@ class BoilerplateCommand:
 
         return response
 
-    def sign_tx(self, bip44_path: str, transaction: Transaction, network_magic: int, button: Button) -> Tuple[int, bytes]:
+    def sign_tx(self, bip44_path: str, transaction: payloads.Transaction, network_magic: int, button: Button) -> Tuple[int, bytes]:
         sw: int
         response: bytes = b""
 
@@ -119,8 +120,18 @@ class BoilerplateCommand:
                 button.right_click()
                 button.right_click()
                 button.right_click()
+
                 # Scope
                 button.right_click()
+
+                # custom contracts
+                if (len(transaction.signers) > 0 and
+                        payloads.WitnessScope.CUSTOM_CONTRACTS in transaction.signers[0].scope):
+                    for _ in range(len(transaction.signers[0].allowed_contracts)):
+                        button.right_click()
+                        button.right_click()
+                        button.right_click()
+
                 # Approve
                 button.both_click()
 

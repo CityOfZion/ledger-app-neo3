@@ -269,7 +269,7 @@ def test_signers_scope_contracts(cmd):
     scope = WitnessScope.CUSTOM_CONTRACTS
     scope = scope.to_bytes(1, 'little')
 
-    contracts_count = b'\x03'
+    contracts_count = b'\x11'
 
     data = version + nonce + system_fee + network_fee + valid_until_block + signer_length + account + scope + contracts_count
     sw, error = send_raw_tx_data(cmd, data)
@@ -305,7 +305,7 @@ def test_signers_scope_groups(cmd):
     valid_until_block = b'\x00' * 4
     signer_length = b'\x01'
     account = b'\x00' * 20  # UInt160
-    # in the 'simplified' app custom groups are not allowed
+
     scope = WitnessScope.CUSTOM_GROUPS
     scope = scope.to_bytes(1, 'little')
     groups_count = b'\x03'
@@ -324,7 +324,7 @@ def test_signers_scope_groups_no_data(cmd):
     valid_until_block = b'\x00' * 4
     signer_length = b'\x01'
     account = b'\x00' * 20  # UInt160
-    # in the 'simplified' app custom groups are not allowed
+
     scope = WitnessScope.CUSTOM_GROUPS
     scope = scope.to_bytes(1, 'little')
     groups_count = b'\x01'
