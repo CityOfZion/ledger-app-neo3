@@ -113,3 +113,4 @@ to run the Nano X app use
 ./speculos.py -m nanox../app-boilerplate/bin/app.elf
 ```
 
+Optional: set the `DEFAULT_SEED` in `speculos.py` to that of your physical device to have the emulator output equal that of your physical device. It can be provided by the `-s` switch but I found hardcoding to be less noisy.
