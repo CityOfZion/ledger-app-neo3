@@ -67,7 +67,7 @@ our ledger work.
 ```asm
 python -m venv venv
 source venv/bin/activate
-pip install python-dev-tools ledgerblue construct jsonschema mnemonic pycrypto pyelftools pbkdf2 pytest Pillow PyQt5
+pip install python-dev-tools ledgerblue construct jsonschema mnemonic pycrypto pyelftools pbkdf2 pytest Pillow PyQt5 ledgercomm
 ```
 Install extra libraries
 ```asm
