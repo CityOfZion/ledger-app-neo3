@@ -1,6 +1,6 @@
 name: Compilation & tests
 
-on: [push, pull_request]
+on: [workflow_dispatch, push, pull_request]
 
 jobs:
   job_build_debug:
@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ghcr.io/ledgerhq/ledger-app-builder:latest
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
 
     steps:
       - name: Clone
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ghcr.io/ledgerhq/ledger-app-builder:latest
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
 
     steps:
       - name: Clone
@@ -64,7 +64,7 @@ jobs:
           name: codecov-app-boilerplate
           fail_ci_if_error: true
           verbose: true
-      
+
       - name: HTML documentation
         run: doxygen .doxygen/Doxyfile
 
@@ -109,7 +109,7 @@ jobs:
 
       - name: Upload Speculos log
         uses: actions/upload-artifact@v2
+        if: ${{ always() }}
         with:
           name: speculos-log
           path: speculos.log
-
