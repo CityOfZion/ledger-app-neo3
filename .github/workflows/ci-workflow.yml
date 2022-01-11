@@ -73,8 +73,6 @@ jobs:
           name: documentation
           path: doc/html
 
-
-
   job_test:
     name: Test
     needs: job_build_debug
@@ -94,11 +92,14 @@ jobs:
           name: boilerplate-app-debug
           path: bin
 
-      - name: Run test
+      - name: Install dependencies
         run: |
           apt update && apt install -qy gcc netcat  # /!\ workaround for pysha3
           pip install -r tests/requirements.txt
-          nohup bash -c "python /speculos/speculos.py bin/app.elf --sdk 2.0 --apdu-port 9999 --button-port 42000 --automation-port 43000 --display headless" > speculos.log 2<&1 &
+
+      - name: Run test
+        run: |
+          nohup bash -c "python /speculos/speculos.py bin/app.elf --sdk 2.1 --apdu-port 9999 --button-port 42000 --automation-port 43000 --display headless" > speculos.log 2<&1 &
           until `nc -w5 -z -v 127.0.0.1 9999`; do sleep 1; done;
           cd tests && pytest --headless
 
