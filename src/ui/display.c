@@ -39,6 +39,7 @@ static char g_system_fee[30];
 static char g_network_fee[30];
 static char g_total_fees[30];
 static char g_vote_to[67];            // 33 bytes public key + \0
+static char g_token_amount[30];
 static char g_network[11];            // Target network the tx in tended for
                                       // ("MainNet", "TestNet" or uint32 network number for private nets)
 static char g_valid_until_block[11];  // uint32 (=max 10 chars) + \0
@@ -138,7 +139,7 @@ UX_STEP_NOCB(ux_display_token_amount_step,
              bnnn_paging,
              {
                  .title = "Token amount",
-                 .text = g_text,
+                 .text = g_token_amount,
              });
 
 UX_STEP_NOCB(ux_display_systemfee_step,
@@ -278,7 +279,7 @@ int ui_display_transaction() {
         snprintf(g_address, sizeof(g_address), "%s", G_context.tx_info.transaction.dst_address);
         PRINTF("Destination address: %s\n", g_address);
 
-        memset(g_text, 0, sizeof(g_text));
+        memset(g_token_amount, 0, sizeof(g_token_amount));
         char token_amount[30] = {0};
         if (!format_fpu64(token_amount,
                           sizeof(token_amount),
@@ -286,8 +287,8 @@ int ui_display_transaction() {
                           G_context.tx_info.transaction.is_neo ? 0 : 8)) {
             return io_send_sw(SW_DISPLAY_TOKEN_TRANSFER_AMOUNT_FAIL);
         }
-        snprintf(g_text,
-                 sizeof(g_text),
+        snprintf(g_token_amount,
+                 sizeof(g_token_amount),
                  "%s %.*s",
                  G_context.tx_info.transaction.is_neo ? "NEO" : "GAS",
                  sizeof(token_amount),
