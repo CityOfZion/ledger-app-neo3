@@ -38,8 +38,8 @@ static action_validate_cb g_validate_callback;
 static char g_system_fee[30];
 static char g_network_fee[30];
 static char g_total_fees[30];
-static char g_vote_to[67];            // 33 bytes public key + \0
 static char g_token_amount[30];
+static char g_vote_to[67];            // 33 bytes public key + \0
 static char g_network[11];            // Target network the tx in tended for
                                       // ("MainNet", "TestNet" or uint32 network number for private nets)
 static char g_valid_until_block[11];  // uint32 (=max 10 chars) + \0
