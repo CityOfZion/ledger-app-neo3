@@ -1,6 +1,6 @@
 name: Compilation & tests
 
-on: [push, pull_request]
+on: [workflow_dispatch, push, pull_request]
 
 jobs:
   job_build_debug:
@@ -114,7 +114,7 @@ jobs:
           name: codecov-app-neo3
           fail_ci_if_error: true
           verbose: true
-      
+
       - name: HTML documentation
         run: doxygen .doxygen/Doxyfile
 
@@ -130,13 +130,6 @@ jobs:
 
     container:
       image: ghcr.io/ledgerhq/speculos:latest
-      ports:
-        - 1234:1234
-        - 9999:9999
-        - 40000:40000
-        - 41000:41000
-        - 42000:42000
-        - 43000:43000
       options: --entrypoint /bin/bash
 
     steps:
@@ -149,14 +142,20 @@ jobs:
           name: boilerplate-app-debug
           path: bin
 
+      - name: Install dependencies
+        run: |
+          apt update && apt install -qy gcc netcat  # /!\ workaround for pysha3
+          pip install -r tests/requirements.txt
+
       - name: Run test
         run: |
-          apt update && apt install -qy gcc  # /!\ workaround for pysha3
-          nohup bash -c "python /speculos/speculos.py bin/app.elf --sdk 2.0 --apdu-port 9999 --button-port 42000 --automation-port 43000 --display headless" > speculos.log 2<&1 &
-          cd tests && pip install -r requirements.txt && pytest --headless
+          nohup bash -c "python /speculos/speculos.py bin/app.elf --sdk 2.1 --apdu-port 9999 --button-port 42000 --automation-port 43000 --display headless" > speculos.log 2<&1 &
+          until `nc -w5 -z -v 127.0.0.1 9999`; do sleep 1; done;
+          cd tests && pytest --headless
 
       - name: Upload Speculos log
         uses: actions/upload-artifact@v2
+        if: ${{ always() }}
         with:
           name: speculos-log
           path: speculos.log
