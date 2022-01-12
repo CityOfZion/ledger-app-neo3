@@ -19,8 +19,9 @@
 #include "types.h"
 #include "constants.h"
 #include "../common/buffer.h"
-#include "stdlib.h"
 #include "tx_utils.h"
+
+#include <string.h>
 
 parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     if (buf->size > MAX_TRANSACTION_LEN) {
@@ -80,7 +81,7 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
         // Check that the signer is unique by comparing its account property vs existing accounts
         // 'i' determines how many signers (and thus accounts) have been added so far.
         for (int s = 0; s < i; s++) {
-            if (!os_secure_memcmp(tx->signers[s].account, tx->signers[i].account, UINT160_LEN)) {
+            if (!memcmp(tx->signers[s].account, tx->signers[i].account, UINT160_LEN)) {
                 return SIGNER_ACCOUNT_DUPLICATE_ERROR;
             }
         }

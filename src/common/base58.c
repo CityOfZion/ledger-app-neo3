@@ -14,10 +14,9 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#include <stddef.h>   // size_t
-#include <stdint.h>   // uint*_t
-#include <string.h>   // memmove, memset
-#include <stdbool.h>  // bool
+#include <stddef.h>  // size_t
+#include <stdint.h>  // uint*_t
+#include <string.h>  // memset
 
 #include "base58.h"
 
@@ -53,7 +52,7 @@ int base58_decode(const char *in, size_t in_len, uint8_t *out, size_t out_len) {
         return -1;
     }
 
-    memmove(tmp, in, in_len);
+    memcpy(tmp, in, in_len);
 
     for (uint8_t i = 0; i < in_len; i++) {
         if (in[i] >= sizeof(BASE58_TABLE)) {
@@ -99,7 +98,7 @@ int base58_decode(const char *in, size_t in_len, uint8_t *out, size_t out_len) {
         return -1;
     }
 
-    memmove(out, buffer + j - zero_count, length);
+    memcpy(out, buffer + j - zero_count, length);
 
     return length;
 }

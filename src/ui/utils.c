@@ -4,6 +4,8 @@
 #include "types.h"
 #include "../common/base58.h"
 
+#include <string.h>
+
 /** the length of a SHA256 hash */
 #define SHA256_HASH_LEN 32
 
@@ -28,7 +30,7 @@
  */
 #define VERIFICATION_SCRIPT_LENGTH 40
 
-bool create_signature_redeem_script(uint8_t* public_key, uint8_t* out, size_t out_len) {
+bool create_signature_redeem_script(const uint8_t* public_key, uint8_t* out, size_t out_len) {
     if (out_len != VERIFICATION_SCRIPT_LENGTH) {
         return false;
     }
@@ -36,11 +38,11 @@ bool create_signature_redeem_script(uint8_t* public_key, uint8_t* out, size_t ou
     // we first have to compress the public key
     uint8_t compressed_key[33];
     compressed_key[0] = ((public_key[63] & 1) ? 0x03 : 0x02);
-    memmove(&compressed_key[1], public_key, 32);
+    memcpy(&compressed_key[1], public_key, 32);
 
     out[0] = 0xc;   // OpCode.PUSHDATA1;
     out[1] = 0x21;  // data size, 33 bytes for compressed public key
-    memmove(&out[2], compressed_key, sizeof(compressed_key));
+    memcpy(&out[2], compressed_key, sizeof(compressed_key));
 
     out[35] = 0x41;                  // OpCode.SYSCALL
     uint32_t checksig = 0x27B3E756;  // Syscall "System.Crypto.CheckSig"
@@ -49,7 +51,7 @@ bool create_signature_redeem_script(uint8_t* public_key, uint8_t* out, size_t ou
     return true;
 }
 
-void public_key_hash160(unsigned char* in, unsigned short inlen, unsigned char* out) {
+void public_key_hash160(const unsigned char* in, unsigned short inlen, unsigned char* out) {
     union {
         cx_sha256_t shasha;
         cx_ripemd160_t riprip;
@@ -69,7 +71,7 @@ void script_hash_to_address(char* out, size_t out_len, const unsigned char* scri
     unsigned char address[ADDRESS_LEN_PRE];
 
     address[0] = ADDRESS_VERSION;
-    os_memmove(&address[1], script_hash, UINT160_LEN);
+    memcpy(&address[1], script_hash, UINT160_LEN);
 
     // do a sha256 hash of the address twice.
     cx_sha256_init(&data_hash);
@@ -79,12 +81,12 @@ void script_hash_to_address(char* out, size_t out_len, const unsigned char* scri
 
     // the first 4 bytes of the final hash is the checksum for base58check encode
     // append to the end of the data
-    memmove(&address[1 + UINT160_LEN], data_hash_2, SCRIPT_HASH_CHECKSUM_LEN);
+    memcpy(&address[1 + UINT160_LEN], data_hash_2, SCRIPT_HASH_CHECKSUM_LEN);
 
     base58_encode(address, sizeof(address), out, out_len);
 }
 
-bool address_from_pubkey(uint8_t public_key[static 64], uint8_t* out, size_t out_len) {
+bool address_from_pubkey(const uint8_t public_key[static 64], char* out, size_t out_len) {
     // we need to go through 3 steps
     // 1. create a verification script with the public key
     // 2. create a script hash of the verification script (using sha256 + ripemd160)

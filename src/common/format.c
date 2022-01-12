@@ -16,7 +16,7 @@
 
 #include <stddef.h>   // size_t
 #include <stdint.h>   // int*_t, uint*_t
-#include <string.h>   // strncpy, memmove
+#include <string.h>   // strncpy, memcpy
 #include <stdbool.h>  // bool
 
 #include "format.h"
@@ -121,7 +121,7 @@ bool format_fpu64(char *dst, size_t dst_len, const uint64_t value, uint8_t decim
         }
 
         const size_t shift = digits - decimals;
-        memmove(dst, buffer, shift);
+        memcpy(dst, buffer, shift);
         dst[shift] = '.';
         if (decimals == 0) {
             dst[shift + 1] = '0';

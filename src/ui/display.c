@@ -16,9 +16,6 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#pragma GCC diagnostic ignored "-Wformat-invalid-specifier"  // snprintf
-#pragma GCC diagnostic ignored "-Wformat-extra-args"         // snprintf
-
 #include <stdbool.h>  // bool
 #include <string.h>   // memset
 
@@ -97,7 +94,7 @@ int ui_display_address() {
     }
 
     memset(g_address, 0, sizeof(g_address));
-    uint8_t address[ADDRESS_LEN] = {0};  // address in base58 check encoded format
+    char address[ADDRESS_LEN] = {0};  // address in base58 check encoded format
     if (!address_from_pubkey(G_context.raw_public_key, address, sizeof(address))) {
         return io_send_sw(SW_CONVERT_TO_ADDRESS_FAIL);
     }
@@ -283,9 +280,9 @@ int ui_display_transaction() {
 
     // We'll try to give more user friendly names for known networks
     if (G_context.network_magic == NETWORK_MAINNET) {
-        snprintf(g_network, sizeof(g_network), "%s", "MainNet");
+        strcpy(g_network, "MainNet");
     } else if (G_context.network_magic == NETWORK_TESTNET) {
-        snprintf(g_network, sizeof(g_network), "%s", "TestNet");
+        strcpy(g_network, "TestNet");
     } else {
         snprintf(g_network, sizeof(g_network), "%d", G_context.network_magic);
     }
@@ -335,29 +332,33 @@ int ui_display_transaction() {
     return 0;
 }
 
+static void add_witness_scope_flag(char *dest, size_t len, const char *flag_name) {
+    if (strlen(dest) != 0) {
+        strlcat(dest, ",", len);
+    }
+    strlcat(dest, flag_name, len);
+}
+
 int parse_scope_name(witness_scope_e scope) {
-    size_t len = 0;
     if (scope == NONE) {
-        return snprintf(g_scope, sizeof(g_scope), "%s", "None");
+        strcpy(g_scope, "None");
+    } else if (scope == GLOBAL) {
+        strcpy(g_scope, "Global");
+    } else {
+        memset(g_scope, 0, sizeof(scope));
+        if (scope & CALLED_BY_ENTRY) {
+            add_witness_scope_flag(g_scope, sizeof(g_scope), "By Entry");
+        };
+
+        if (scope & CUSTOM_CONTRACTS) {
+            add_witness_scope_flag(g_scope, sizeof(g_scope), "Contracts");
+        };
+
+        if (scope & CUSTOM_GROUPS) {
+            add_witness_scope_flag(g_scope, sizeof(g_scope), "Groups");
+        }
     }
-
-    if (scope == GLOBAL) {
-        return snprintf(g_scope, sizeof(g_scope), "%s", "Global");
-    }
-
-    if (scope & CALLED_BY_ENTRY) {
-        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "By Entry,");
-    };
-
-    if (scope & CUSTOM_CONTRACTS) {
-        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "Contracts,");
-    };
-
-    if (scope & CUSTOM_GROUPS) {
-        len += snprintf(&g_scope[len], sizeof(g_scope), "%s", "Groups,");
-    };
-
-    return len - 1;  // take of the comma
+    return strlen(g_scope);
 }
 
 // This is a special function you must call for bnnn_paging to work properly in an edgecase.
@@ -415,7 +416,7 @@ void next_prop() {
 
 void prev_prop() {
     uint8_t *idx = &display_ctx.p_index;
-    signer_t signer = G_context.tx_info.transaction.signers[display_ctx.s_index];
+    signer_t signer;
 
     // from first dynamic screen, go back to first static
     if (display_ctx.s_index == 0 && signer_property[*idx] == INDEX) {
@@ -482,18 +483,18 @@ bool get_next_data(enum e_direction direction) {
             return false;
         }
         case INDEX: {
-            snprintf(g_title, sizeof(g_title), "Signer");
+            strcpy(g_title, "Signer");
             uint8_t signers_size = G_context.tx_info.transaction.signers_size;
             snprintf(g_text, sizeof(g_text), "%d of %d", display_ctx.s_index + 1, signers_size);
             return true;
         }
         case ACCOUNT: {
-            snprintf(g_title, sizeof(g_title), "Account");
-            snprintf(g_text, sizeof(g_text), "%.*H", 20, s.account);
+            strcpy(g_title, "Account");
+            format_hex(s.account, 20, g_text, sizeof(g_text));
             return true;
         }
         case SCOPE: {
-            snprintf(g_title, sizeof(g_title), "Scope");
+            strcpy(g_title, "Scope");
             int scope_size = parse_scope_name(s.scope);
             snprintf(g_text, sizeof(g_text), "%.*s", scope_size, g_scope);
             return true;
@@ -501,13 +502,13 @@ bool get_next_data(enum e_direction direction) {
         case CONTRACTS: {
             s = G_context.tx_info.transaction.signers[display_ctx.s_index];
             snprintf(g_title, sizeof(g_title), "Contract %d of %d", display_ctx.c_index + 1, s.allowed_contracts_size);
-            snprintf(g_text, sizeof(g_text), "%.*H", UINT160_LEN, s.allowed_contracts[display_ctx.c_index]);
+            format_hex(s.allowed_contracts[display_ctx.c_index], UINT160_LEN, g_text, sizeof(g_text));
             return true;
         }
         case GROUPS: {
             s = G_context.tx_info.transaction.signers[display_ctx.s_index];
             snprintf(g_title, sizeof(g_title), "Group %d of %d", display_ctx.g_index + 1, s.allowed_groups_size);
-            snprintf(g_text, sizeof(g_text), "%.*H", ECPOINT_LEN, s.allowed_groups[display_ctx.g_index]);
+            format_hex(s.allowed_groups[display_ctx.g_index], ECPOINT_LEN, g_text, sizeof(g_text));
             return true;
         }
         case END: {
