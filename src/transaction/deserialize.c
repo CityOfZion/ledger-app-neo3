@@ -102,7 +102,7 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
             if (!buffer_read_varint(buf, &var_int_length)) {
                 return SIGNER_ALLOWED_CONTRACTS_LENGTH_PARSING_ERROR;
             }
-            if (var_int_length > MAX_SIGNER_SUB_ITEMS) {
+            if (var_int_length > MAX_SIGNER_ALLOWED_CONTRACTS) {
                 return SIGNER_ALLOWED_CONTRACTS_LENGTH_VALUE_ERROR;
             }
             tx->signers[i].allowed_contracts_size = var_int_length;
@@ -119,7 +119,7 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
             if (!buffer_read_varint(buf, &var_int_length)) {
                 return SIGNER_ALLOWED_GROUPS_LENGTH_PARSING_ERROR;
             }
-            if (var_int_length > MAX_SIGNER_SUB_ITEMS) {
+            if (var_int_length > MAX_SIGNER_ALLOWED_GROUPS) {
                 return SIGNER_ALLOWED_GROUPS_LENGTH_VALUE_ERROR;
             }
             tx->signers[i].allowed_groups_size = var_int_length;
@@ -175,6 +175,11 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     // test if script is NEO or GAS transfer
     buffer_t scriptBuf = {.ptr = tx->script, .size = script_length, .offset = 0};
     try_parse_transfer_script(&scriptBuf, tx);
+    if (!tx->is_system_asset_transfer) {
+        // reset offset to start script dissection from the start
+        scriptBuf.offset = 0;
+        try_parse_vote_script(&scriptBuf, tx);
+    }
 
     return (buf->offset == buf->size) ? PARSING_OK : INVALID_LENGTH_ERROR;
 }

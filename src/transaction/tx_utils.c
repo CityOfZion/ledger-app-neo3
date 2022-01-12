@@ -105,3 +105,72 @@ void try_parse_transfer_script(buffer_t *script, transaction_t *tx) {
     // everything looks like a standard contract transfer for NEO/GAS and we were able to parse the amount + dst address
     tx->is_system_asset_transfer = true;
 }
+
+void try_parse_vote_script(buffer_t *script, transaction_t *tx) {
+    if (!buffer_read_u8(script, &s.u8)) return;
+
+    // first byte should be 0xb (OpCode.PUSHNULL) when removing a vote, or 0x0C (OpCode.PUSHDATA1) followed by 0x21 (Length 33)
+    // indicating a 'vote_to' public key
+    if (s.u8 != 0xB && s.u8 != 0x0C) return;
+    
+    if (s.u8 == 0x0B) { // remove vote
+        tx->is_remove_vote = true;
+    } else { // add vote
+        if (!buffer_read_u8(script, &s.u8)) return;
+        if (s.u8 != 0x21) return; // PUSHDATA1 must be followed by 33 bytes of data for the compressed public key
+
+        uint8_t *public_key;
+        public_key = (uint8_t *) (script->ptr + script->offset);
+        if (!buffer_seek_cur(script, ECPOINT_LEN)) return;
+
+        // compressed public keys must start with 0x02 or 0x03
+        if (public_key[0] != 0x02 && public_key[0] != 0x03) return;
+        memcpy(tx->vote_to, public_key, ECPOINT_LEN);
+        tx->is_remove_vote = false;
+    }
+
+    // check for source script hash
+    if (!buffer_read_u16(script, &s.u16, BE)) return;
+    if (s.u16 != 0x0C14) return;  // PUSHDATA1 , 20 bytes length for destination script hash
+    if (!buffer_seek_cur(script, UINT160_LEN)) return;
+
+    // clang-format off
+    uint8_t sequence[] = {
+        0x12,  // OpCode.PUSH2
+        0xC0,  // OpCode.PACK - we pack the 2 arguments to the vote() method
+        0x1F,  // OpCode.PUSH15 - CallFlags
+        0x0C, 0x04,  // OpCode.PUSHDATA1, length 4 - contract method name
+        0x76, 0x6f, 0x74, 0x65,  // 'vote'
+        0x0C, 0x14,  // OpCode.PUSHDATA1, length 20 - contract script hash
+    };
+
+    // we expect the above fixed sequence next
+    if (!buffer_can_read(script, sizeof(sequence))) return;
+    if (memcmp(script->ptr + script->offset, sequence, sizeof(sequence))) return;
+    buffer_seek_cur(script, sizeof(sequence));
+
+    // read contract script hash
+    uint8_t neo_script_hash[] = {0xf5, 0x63, 0xea, 0x40, 0xbc, 0x28, 0x3d, 0x4d, 0x0e, 0x05,
+                                 0xc4, 0x8e, 0xa3, 0x05, 0xb3, 0xf2, 0xa0, 0x73, 0x40, 0xef};
+
+    if (!buffer_can_read(script, UINT160_LEN)) return;
+    if (memcmp(script->ptr + script->offset, neo_script_hash, UINT160_LEN)) return;
+    buffer_seek_cur(script, UINT160_LEN);
+
+    // finally make sure we end with a contract syscall
+
+    // clang-format off
+    uint8_t sequence2[] = {
+        0x41,  // OpCode.SYSCALL
+        0x62, 0x7d, 0x5b, 0x52  // id 'System.Contract.Call'
+    };
+
+    if (!buffer_can_read(script, sizeof(sequence2))) return;
+    if (memcmp(script->ptr + script->offset, sequence2, sizeof(sequence2)) != 0) return;
+    buffer_seek_cur(script, sizeof(sequence2));
+
+    // make sure there is no extra code after the vote script
+    if (script->offset != tx->script_size) return;
+
+    tx->is_vote_script = true;
+}

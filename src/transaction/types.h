@@ -19,10 +19,17 @@
  */
 #define MIN_TX_SIGNERS 1
 /**
- * Limits the maximum 'allowed_contracts' or 'allowed_groups' of a signer_t
+ * Limits the maximum 'allowed_groups' of a signer_t
  * Actual network value is 16, we limit it because we run out of SRAM
  */
-#define MAX_SIGNER_SUB_ITEMS 2
+#define MAX_SIGNER_ALLOWED_GROUPS 2
+
+/**
+ * Limits the maximum 'allowed_contracts' of a signer_t
+ *
+ */
+#define MAX_SIGNER_ALLOWED_CONTRACTS 16
+
 /**
  * The NEO network actually limits the attributes to (16 - signers count).
  * However, there currently only exist 2 attribute types, both can only be attached once
@@ -77,9 +84,9 @@ typedef enum {
 typedef struct {
     uint8_t *account;  // UInt160, 20 bytes
     witness_scope_e scope;
-    uint8_t *allowed_contracts[MAX_SIGNER_SUB_ITEMS];  // array of UInt160s
+    uint8_t *allowed_contracts[MAX_SIGNER_ALLOWED_CONTRACTS];  // array of UInt160s
     uint8_t allowed_contracts_size;
-    uint8_t *allowed_groups[MAX_SIGNER_SUB_ITEMS];  // array of ECPoints in compressed format, 33 bytes
+    uint8_t *allowed_groups[MAX_SIGNER_ALLOWED_GROUPS];  // array of ECPoints in compressed format, 33 bytes
     uint8_t allowed_groups_size;
 } signer_t;
 
@@ -109,4 +116,7 @@ typedef struct {
     bool is_neo;                    // indicates if 'transfer' is called on the NEO contract. False means GAS contract
     int64_t amount;                 // transfer amount
     uint8_t dst_address[ADDRESS_LEN];
+    bool is_vote_script;
+    bool is_remove_vote;
+    uint8_t vote_to[ECPOINT_LEN];
 } transaction_t;
