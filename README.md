@@ -1,3 +1,6 @@
+# This app has moved to the official Ledger organisation
+[https://github.com/LedgerHQ/app-neo3](https://github.com/LedgerHQ/app-neo3)
+
 # NEO3 Application
 
 This is the NEO3 ledger application for the Nano S/X. It is based on Ledgers [Boilerplate app](https://github.com/LedgerHQ/app-boilerplate).
